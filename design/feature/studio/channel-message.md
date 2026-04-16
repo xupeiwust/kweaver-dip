@@ -37,7 +37,7 @@
 - 通道用户列表展示以下信息：
   * 用户显示名
   * 所属通道
-- 列表支持按“通道类型“进行过滤，并按显示名进行精确搜索。
+- 列表支持按“通道类型“进行过滤，并按显示名进行部分匹配。
 - 如果一个用户属于多个通道，则显示两条独立的记录。
 
 #### 添加通道用户
@@ -79,9 +79,9 @@
 例如，假设存在以下通道用户：
 
 ```jsonl
-{"id":"1","displayName":"Alice","channel":{"type":"feishu","openid":"feishu-openid-1"}}
-{"id":"2","displayName":"Bob","channel":{"type":"feishu","openid":"feishu-openid-2"}}
-{"id":"3","displayName":"Zak","channel":{"type":"feishu","openid":"feishu-openid-3"}}
+{"displayName":"Alice","channel":{"type":"feishu","openid":"feishu-openid-1"}}
+{"displayName":"Bob","channel":{"type":"feishu","openid":"feishu-openid-2"}}
+{"displayName":"Zak","channel":{"type":"feishu","openid":"feishu-openid-3"}}
 ```
 
 当设定名单为：
@@ -92,7 +92,7 @@
 ]
 ```
 
-此时该数字员工只能向 Alice（id: "feishu-openid-1"） 和 Zak（id: "feishu-openid-3"） 发送消息。
+此时该数字员工只能向 Alice（"feishu-openid-1"） 和 Zak（"feishu-openid-3"） 发送消息。
 
 #### 发送消息给通道用户
 
@@ -120,9 +120,6 @@ type: object
 description: JSONL 中的每一行代表一个通道用户对象
 
 properties:
-  id:
-    type: string
-    description: 记录 UUID
 
   displayName:
     type: string
@@ -145,7 +142,6 @@ properties:
 ### 导入
 
 - JSONL 中的记录必须保证以下字段（组合）全局唯一：
-  * id
   * channel.openid
   * displayName + channel.type
 
@@ -203,8 +199,8 @@ properties:
 ### 配置数字员工消息投递范围
 
 - 通过 PUT /digital-human/:id/channel-users 接口来更新特定数字员工的消息投递范围。
-- `<channelType>.accounts.<accountId>.allowFrom` 传入通道用户的 OpenID。
-- 使用 WebSocket RPC 协议中的 `config.patch` 方法局部更新 `openclaw.json` 来设定数字员工的投递范围，该方法只支持覆盖更新。参考：@docs/references/openclaw-websocket-rpc/config.md
+- 通过接口将通道用户的 OpenID 列表覆盖 `<channelType>.accounts.<accountId>.allowFrom`。
+- 使用 WebSocket RPC 协议中的 `config.patch` 方法局部更新 `<channelType>.accounts.<accountId>.allowFrom` 来设定数字员工的投递范围，该方法只支持覆盖更新。参考：@docs/references/openclaw-websocket-rpc/config.md
 
 ### 获取通道用户列表
 
@@ -238,7 +234,7 @@ BE ->> SW: 返回列表数据
 
 #### 根据数字员工 ID 过滤列表
 
-按照以下流程实现根据数字员工 ID 过滤通道用户列表：
+- 按照以下流程实现根据数字员工 ID 过滤通道用户列表：
 
 1. 读取 `openclaw.json`
 2. 从 `bindings` 字段获取数字员工 ID（agentID）和 channel 的关系。
@@ -247,6 +243,10 @@ BE ->> SW: 返回列表数据
 #### 过滤条件
 
 - 过滤条件支持传入 `type` 和 `displayName`，根据过滤条件参数进一步筛选过滤列表。
+
+### 获取数字员工的 @通道用户 列表
+
+- 通过 HTTP GET /digital-human/:id/channel-users 获取指定数字员工的可 @通道用户 列表
 
 ### 投递消息
 

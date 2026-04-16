@@ -63,6 +63,9 @@ export function errorHandler(
 
   response.status(statusCode).json({
     code,
-    description
+    description,
+    ...(error instanceof HttpError && error.detail !== undefined
+      ? { detail: error.detail }
+      : {})
   });
 }

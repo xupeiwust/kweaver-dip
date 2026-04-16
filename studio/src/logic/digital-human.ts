@@ -493,7 +493,7 @@ function toNotFoundIfAgentMissing(error: unknown, id: string): HttpError {
  *
  * @returns The absolute path to the OpenClaw configuration file.
  */
-function resolveOpenClawConfigPath(): string {
+export function resolveOpenClawConfigPath(): string {
   return join(homedir(), ".openclaw", "openclaw.json");
 }
 

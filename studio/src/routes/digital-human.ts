@@ -16,9 +16,11 @@ import {
 import {
   DefaultDigitalHumanLogic,
 } from "../logic/digital-human";
+import { DefaultChannelUserLogic } from "../logic/channel-user";
 import {
   DefaultBuiltInDigitalHumanLogic,
 } from "../logic/built-in-digital-human";
+import { readChannelUserListQuery } from "./channel-user-query";
 import type {
   BknEntry,
   BuiltInDigitalHumanList,
@@ -28,6 +30,11 @@ import type {
   DigitalHumanChannelType,
   UpdateDigitalHumanRequest
 } from "../types/digital-human";
+import type {
+  ChannelUserListResponse,
+  DigitalHumanChannelUsersResponse,
+  UpdateDigitalHumanChannelUsersRequest
+} from "../types/channel-user";
 
 const env = getEnv();
 const openClawAgentsAdapter = new OpenClawAgentsGatewayAdapter(
@@ -60,6 +67,7 @@ const digitalHumanLogic = new DefaultDigitalHumanLogic({
   openClawCronAdapter,
   agentSkillsLogic
 });
+const channelUserLogic = new DefaultChannelUserLogic({ openClawAgentsAdapter });
 const builtInDigitalHumanLogic = new DefaultBuiltInDigitalHumanLogic();
 
 /**
@@ -381,6 +389,65 @@ export function createDigitalHumanRouter(): Router {
     handleUpdateDigitalHuman
   );
 
+  router.get(
+    "/api/dip-studio/v1/digital-human/:id/channel-users",
+    async (
+      request: Request,
+      response: Response<ChannelUserListResponse>,
+      next: NextFunction
+    ): Promise<void> => {
+      try {
+        const id = resolveIdParam(request.params.id);
+        const query = {
+          ...readChannelUserListQuery(request.query),
+          digitalHumanId: id
+        };
+        const result = await channelUserLogic.listChannelUsers(query);
+
+        response.status(200).json(result);
+      } catch (error) {
+        next(
+          error instanceof HttpError
+            ? error
+            : new HttpError(
+                502,
+                error instanceof Error
+                  ? error.message
+                  : "Failed to list digital human channel users"
+              )
+        );
+      }
+    }
+  );
+
+  router.put(
+    "/api/dip-studio/v1/digital-human/:id/channel-users",
+    async (
+      request: Request,
+      response: Response<DigitalHumanChannelUsersResponse>,
+      next: NextFunction
+    ): Promise<void> => {
+      try {
+        const id = resolveIdParam(request.params.id);
+        const body = parseUpdateDigitalHumanChannelUsersRequest(request.body);
+        const result = await channelUserLogic.updateDigitalHumanChannelUsers(id, body);
+
+        response.status(200).json(result);
+      } catch (error) {
+        next(
+          error instanceof HttpError
+            ? error
+            : new HttpError(
+                502,
+                error instanceof Error
+                  ? error.message
+                  : "Failed to update digital human channel users"
+              )
+        );
+      }
+    }
+  );
+
   router.post(
     "/api/dip-studio/v1/digital-human",
     async (
@@ -538,4 +605,30 @@ function parseChannelType(value: unknown): DigitalHumanChannelType | undefined {
     return trimmed;
   }
   throw new HttpError(400, 'channel.type must be "feishu" or "dingtalk"');
+}
+
+/**
+ * @param body Raw request body.
+ * @returns Validated digital human channel-user whitelist payload.
+ */
+function parseUpdateDigitalHumanChannelUsersRequest(
+  body: unknown
+): UpdateDigitalHumanChannelUsersRequest {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    throw new HttpError(400, "Request body must be a JSON object");
+  }
+
+  const raw = body as Record<string, unknown>;
+  if (!Array.isArray(raw.allowFrom)) {
+    throw new HttpError(400, "allowFrom must be an array");
+  }
+
+  return {
+    allowFrom: raw.allowFrom.map((value) => {
+      if (typeof value !== "string" || value.trim().length === 0) {
+        throw new HttpError(400, "allowFrom must contain non-empty strings");
+      }
+      return value.trim();
+    })
+  };
 }

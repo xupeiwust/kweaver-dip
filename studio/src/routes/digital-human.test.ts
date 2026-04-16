@@ -63,9 +63,11 @@ type LogicMocks = Partial<{
   createBuiltInDigitalHumans: (ids: string[], deps: unknown) => Promise<unknown>;
   listDigitalHumans: () => Promise<unknown>;
   getDigitalHuman: (id: string) => Promise<unknown>;
+  listChannelUsers: (query: unknown) => Promise<unknown>;
   createDigitalHuman: (body: unknown) => Promise<unknown>;
   updateDigitalHuman: (id: string, patch: unknown) => Promise<unknown>;
   deleteDigitalHuman: (id: string, deleteFiles?: boolean) => Promise<void>;
+  updateDigitalHumanChannelUsers: (id: string, patch: unknown) => Promise<unknown>;
 }>;
 
 /**
@@ -98,6 +100,25 @@ async function importRouterWithLogicMock(
         logic.deleteDigitalHuman ?? vi.fn().mockResolvedValue(undefined)
     }))
   }));
+  vi.doMock("../logic/channel-user", () => ({
+    DefaultChannelUserLogic: vi.fn().mockImplementation(() => ({
+      listChannelUsers:
+        logic.listChannelUsers ??
+        vi.fn().mockResolvedValue({
+          items: [],
+          total: 0,
+          start: 0,
+          limit: 20
+        }),
+      updateDigitalHumanChannelUsers:
+        logic.updateDigitalHumanChannelUsers ??
+        vi.fn().mockResolvedValue({
+          digitalHumanId: "x",
+          channelType: "feishu",
+          allowFrom: []
+        })
+    }))
+  }));
   vi.doMock("../logic/built-in-digital-human", () => ({
     DefaultBuiltInDigitalHumanLogic: vi.fn().mockImplementation(() => ({
       listBuiltInDigitalHumans:
@@ -115,6 +136,7 @@ describe("createDigitalHumanRouter", () => {
   const builtInCreatePath = "/api/dip-studio/v1/digital-human/built-in/:ids";
   const listPath = "/api/dip-studio/v1/digital-human";
   const detailPath = "/api/dip-studio/v1/digital-human/:id";
+  const channelUsersPath = "/api/dip-studio/v1/digital-human/:id/channel-users";
 
   it("registers GET /api/dip-studio/v1/digital-human/built-in", async () => {
     const { createDigitalHumanRouter } = await importRouterWithLogicMock({});
@@ -221,6 +243,120 @@ describe("createDigitalHumanRouter", () => {
     const router = createDigitalHumanRouter() as Router;
 
     expect(findHandler(router, "get", listPath)).toBeDefined();
+  });
+
+  it("updates the digital human channel user whitelist", async () => {
+    const updateDigitalHumanChannelUsers = vi.fn().mockResolvedValue({
+      digitalHumanId: "agent-1",
+      channelType: "feishu",
+      allowFrom: ["o-1"]
+    });
+    const { createDigitalHumanRouter } = await importRouterWithLogicMock({
+      updateDigitalHumanChannelUsers
+    });
+    const router = createDigitalHumanRouter() as Router;
+    const handler = findHandler(router, "put", channelUsersPath);
+    const response = createResponseDouble();
+    const next = vi.fn<NextFunction>();
+
+    await handler?.(
+      {
+        params: { id: "agent-1" },
+        body: { allowFrom: ["o-1"] }
+      } as unknown as Request,
+      response,
+      next
+    );
+
+    expect(updateDigitalHumanChannelUsers).toHaveBeenCalledWith("agent-1", {
+      allowFrom: ["o-1"]
+    });
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith({
+      digitalHumanId: "agent-1",
+      channelType: "feishu",
+      allowFrom: ["o-1"]
+    });
+  });
+
+  it("lists available channel users for the specified digital human", async () => {
+    const listChannelUsers = vi.fn().mockResolvedValue({
+      items: [
+        {
+          displayName: "Alice",
+          channel: {
+            type: "feishu",
+            openid: "o-1"
+          }
+        }
+      ],
+      total: 1,
+      start: 0,
+      limit: 20
+    });
+    const { createDigitalHumanRouter } = await importRouterWithLogicMock({
+      listChannelUsers
+    });
+    const router = createDigitalHumanRouter() as Router;
+    const handler = findHandler(router, "get", channelUsersPath);
+    const response = createResponseDouble();
+    const next = vi.fn<NextFunction>();
+
+    await handler?.(
+      { params: { id: "agent-1" } } as unknown as Request,
+      response,
+      next
+    );
+
+    expect(listChannelUsers).toHaveBeenCalledWith({ digitalHumanId: "agent-1" });
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith({
+      items: [
+        {
+          displayName: "Alice",
+          channel: {
+            type: "feishu",
+            openid: "o-1"
+          }
+        }
+      ],
+      total: 1,
+      start: 0,
+      limit: 20
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("passes type and displayName filters when listing channel users", async () => {
+    const listChannelUsers = vi.fn().mockResolvedValue({
+      items: [],
+      total: 0,
+      start: 0,
+      limit: 20
+    });
+    const { createDigitalHumanRouter } = await importRouterWithLogicMock({
+      listChannelUsers
+    });
+    const router = createDigitalHumanRouter() as Router;
+    const handler = findHandler(router, "get", channelUsersPath);
+
+    await handler?.(
+      {
+        params: { id: "agent-1" },
+        query: {
+          type: "feishu",
+          displayName: " Alice "
+        }
+      } as unknown as Request,
+      createResponseDouble(),
+      vi.fn<NextFunction>()
+    );
+
+    expect(listChannelUsers).toHaveBeenCalledWith({
+      digitalHumanId: "agent-1",
+      type: "feishu",
+      displayName: "Alice"
+    });
   });
 
   it("returns the digital human list on success", async () => {
@@ -625,6 +761,31 @@ describe("createDigitalHumanRouter", () => {
     expect(next).toHaveBeenCalledWith(
       expect.objectContaining({ statusCode: 400 })
     );
+  });
+
+  it("GET :id/channel-users with invalid type returns 400", async () => {
+    const { createDigitalHumanRouter } = await importRouterWithLogicMock({});
+    const router = createDigitalHumanRouter() as Router;
+    const handler = findHandler(router, "get", channelUsersPath);
+    const response = createResponseDouble();
+    const next = vi.fn<NextFunction>();
+
+    await handler?.(
+      {
+        params: { id: "agent-1" },
+        query: { type: "wechat" }
+      } as unknown as Request,
+      response,
+      next
+    );
+
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: 400,
+        message: 'type must be "feishu" or "dingding"'
+      })
+    );
+    expect(response.status).not.toHaveBeenCalled();
   });
 
   it("POST with incomplete channel returns 400", async () => {

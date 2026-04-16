@@ -1,0 +1,211 @@
+openapi: 3.1.0
+
+info:
+  title: DIP Studio 通道用户接口
+  version: 0.1.0
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+security:
+  - BearerAuth: []
+
+servers:
+  - url: /api/dip-studio/v1
+
+paths:
+  /channel-users:
+    get:
+      operationId: getChannelUsers
+      summary: 获取通道用户列表
+      parameters:
+        - name: type
+          in: query
+          schema:
+            $ref: './channel-users.schemas.yaml#/components/schemas/ChannelUserType'
+        - name: displayName
+          in: query
+          description: 按显示名做不区分大小写的部分匹配过滤
+          schema:
+            type: string
+        - name: digitalHumanId
+          in: query
+          schema:
+            type: string
+        - name: start
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: 通道用户列表
+          content:
+            application/json:
+              schema:
+                $ref: './channel-users.schemas.yaml#/components/schemas/ChannelUserListResponse'
+        "400":
+          $ref: '../common.schemas.yaml#/errors/InvalidParameter'
+        "401":
+          $ref: '../common.schemas.yaml#/errors/Unauthorized'
+        "403":
+          $ref: '../common.schemas.yaml#/errors/Forbidden'
+        "404":
+          $ref: '../common.schemas.yaml#/errors/NotFound'
+        "500":
+          $ref: '../common.schemas.yaml#/errors/InternalServerError'
+        "502":
+          $ref: '../common.schemas.yaml#/errors/BadGateway'
+    post:
+      operationId: createChannelUser
+      summary: 创建通道用户
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './channel-users.schemas.yaml#/components/schemas/UpsertChannelUserRequest'
+      responses:
+        "201":
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: './channel-users.schemas.yaml#/components/schemas/ChannelUser'
+        "400":
+          $ref: '../common.schemas.yaml#/errors/InvalidParameter'
+        "401":
+          $ref: '../common.schemas.yaml#/errors/Unauthorized'
+        "403":
+          $ref: '../common.schemas.yaml#/errors/Forbidden'
+        "409":
+          $ref: '../common.schemas.yaml#/errors/Conflict'
+        "500":
+          $ref: '../common.schemas.yaml#/errors/InternalServerError'
+        "502":
+          $ref: '../common.schemas.yaml#/errors/BadGateway'
+
+  /channel-users/{id}:
+    put:
+      operationId: updateChannelUser
+      summary: 更新通道用户
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './channel-users.schemas.yaml#/components/schemas/UpsertChannelUserRequest'
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: './channel-users.schemas.yaml#/components/schemas/ChannelUser'
+        "400":
+          $ref: '../common.schemas.yaml#/errors/InvalidParameter'
+        "401":
+          $ref: '../common.schemas.yaml#/errors/Unauthorized'
+        "403":
+          $ref: '../common.schemas.yaml#/errors/Forbidden'
+        "404":
+          $ref: '../common.schemas.yaml#/errors/NotFound'
+        "409":
+          $ref: '../common.schemas.yaml#/errors/Conflict'
+        "500":
+          $ref: '../common.schemas.yaml#/errors/InternalServerError'
+        "502":
+          $ref: '../common.schemas.yaml#/errors/BadGateway'
+    delete:
+      operationId: deleteChannelUser
+      summary: 删除通道用户
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: 删除成功
+        "400":
+          $ref: '../common.schemas.yaml#/errors/InvalidParameter'
+        "401":
+          $ref: '../common.schemas.yaml#/errors/Unauthorized'
+        "403":
+          $ref: '../common.schemas.yaml#/errors/Forbidden'
+        "404":
+          $ref: '../common.schemas.yaml#/errors/NotFound'
+        "500":
+          $ref: '../common.schemas.yaml#/errors/InternalServerError'
+        "502":
+          $ref: '../common.schemas.yaml#/errors/BadGateway'
+
+  /channel-users/export:
+    get:
+      operationId: exportChannelUsers
+      summary: 导出通道用户 JSONL
+      responses:
+        "200":
+          description: 通道用户 JSONL 文件
+          content:
+            application/x-ndjson:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: '../common.schemas.yaml#/errors/Unauthorized'
+        "403":
+          $ref: '../common.schemas.yaml#/errors/Forbidden'
+        "500":
+          $ref: '../common.schemas.yaml#/errors/InternalServerError'
+        "502":
+          $ref: '../common.schemas.yaml#/errors/BadGateway'
+
+  /channel-users/import:
+    post:
+      operationId: importChannelUsers
+      summary: 导入通道用户 JSONL
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+                - file
+      responses:
+        "200":
+          description: 导入成功
+          content:
+            application/json:
+              schema:
+                $ref: './channel-users.schemas.yaml#/components/schemas/ChannelUserImportResult'
+        "400":
+          $ref: '../common.schemas.yaml#/errors/InvalidParameter'
+        "401":
+          $ref: '../common.schemas.yaml#/errors/Unauthorized'
+        "403":
+          $ref: '../common.schemas.yaml#/errors/Forbidden'
+        "500":
+          $ref: '../common.schemas.yaml#/errors/InternalServerError'
+        "502":
+          $ref: '../common.schemas.yaml#/errors/BadGateway'

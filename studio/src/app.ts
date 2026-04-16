@@ -9,6 +9,7 @@ import { createChatRouter } from "./routes/chat";
 import { createCronRouter } from "./routes/plan";
 import { createChatAgentRouter } from "./routes/chat-agent";
 import { createChatUploadRouter } from "./routes/chat-upload";
+import { createChannelUserRouter } from "./routes/channel-user";
 import { createDigitalHumanRouter } from "./routes/digital-human";
 import { createHealthRouter } from "./routes/health";
 import { createGuideRouter } from "./routes/guide";
@@ -59,6 +60,7 @@ export function createApp(options: AppOptions = {}): Express {
   app.use(createChatRouter());
   app.use(createSessionsRouter());
   app.use(createSkillsRouter());
+  app.use(createChannelUserRouter());
   app.use(createDigitalHumanRouter());
   app.use(createChatUploadRouter());
   app.use(createChatAgentRouter());

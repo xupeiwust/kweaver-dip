@@ -1,0 +1,95 @@
+components:
+  schemas:
+    ChannelUserType:
+      type: string
+      enum:
+        - feishu
+        - dingding
+
+    ChannelUserChannel:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/ChannelUserType'
+        openid:
+          type: string
+      required:
+        - type
+        - openid
+
+    ChannelUser:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        channel:
+          $ref: '#/components/schemas/ChannelUserChannel'
+      required:
+        - id
+        - displayName
+        - channel
+
+    ChannelUserListItem:
+      type: object
+      properties:
+        displayName:
+          type: string
+        channel:
+          $ref: '#/components/schemas/ChannelUserChannel'
+      required:
+        - displayName
+        - channel
+
+    ChannelUserListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChannelUserListItem'
+        total:
+          type: integer
+        start:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - items
+        - total
+        - start
+        - limit
+
+    UpsertChannelUserRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+        channel:
+          $ref: '#/components/schemas/ChannelUserChannel'
+      required:
+        - displayName
+        - channel
+
+    ChannelUserImportResult:
+      type: object
+      properties:
+        count:
+          type: integer
+      required:
+        - count
+
+    ChannelUserImportError:
+      type: object
+      properties:
+        line:
+          type: integer
+        raw:
+          type: string
+        reason:
+          type: string
+      required:
+        - line
+        - raw
+        - reason
