@@ -545,6 +545,8 @@ DIP 数字员工 Web 界面
 | -- | -- | -- |
 | count | integer | 成功导入的通道用户数量 |
 
+校验失败时会在错误详情中返回具体行号和原因；重复记录会明确提示为 `与前面记录重复：channel.openid 已存在` 或 `与前面记录重复：displayName + channel.type 组合已存在`。
+
 #### 获取指定数字员工可 @ 的通道用户列表
 
 `GET /api/dip-studio/v1/digital-human/{id}/channel-users`

@@ -58,7 +58,7 @@ describe("parseChannelUsersJsonl", () => {
     });
   });
 
-  it("reports duplicate records on later lines", () => {
+  it("reports duplicate reasons on later lines", () => {
     const result = parseChannelUsersJsonl(
       [
         "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}",
@@ -68,8 +68,14 @@ describe("parseChannelUsersJsonl", () => {
     );
 
     expect(result.errors).toEqual([
-      expect.objectContaining({ line: 2, reason: "重复记录" }),
-      expect.objectContaining({ line: 3, reason: "重复记录" })
+      expect.objectContaining({
+        line: 2,
+        reason: "与前面记录重复：displayName + channel.type 组合已存在"
+      }),
+      expect.objectContaining({
+        line: 3,
+        reason: "与前面记录重复：channel.openid 已存在"
+      })
     ]);
   });
 

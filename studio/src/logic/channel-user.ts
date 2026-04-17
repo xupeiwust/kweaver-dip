@@ -482,7 +482,6 @@ function normalizeParsedChannelUser(
  * Detects duplicate JSONL rows according to the uniqueness constraints.
  *
  * @param user Candidate parsed channel user.
- * @param seenIds Seen ids map.
  * @param seenOpenIds Seen openids map.
  * @param seenDisplayChannel Seen displayName + type combinations map.
  * @param line Current line number.
@@ -495,8 +494,12 @@ function resolveDuplicateReason(
   line: number
 ): string | undefined {
   const displayKey = `${user.channel.type}::${user.displayName}`;
-  if (seenOpenIds.has(user.channel.openid) || seenDisplayChannel.has(displayKey)) {
-    return "重复记录";
+  if (seenOpenIds.has(user.channel.openid)) {
+    return "与前面记录重复：channel.openid 已存在";
+  }
+
+  if (seenDisplayChannel.has(displayKey)) {
+    return "与前面记录重复：displayName + channel.type 组合已存在";
   }
 
   seenOpenIds.set(user.channel.openid, line);

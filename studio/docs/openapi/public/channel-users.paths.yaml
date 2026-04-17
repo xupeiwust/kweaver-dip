@@ -53,7 +53,11 @@ paths:
               schema:
                 $ref: './channel-users.schemas.yaml#/components/schemas/ChannelUserListResponse'
         "400":
-          $ref: '../common.schemas.yaml#/errors/InvalidParameter'
+          description: 导入文件校验失败；错误详情会包含具体行号和原因，重复记录会明确提示为 channel.openid 已存在，或 displayName + channel.type 组合已存在
+          content:
+            application/json:
+              schema:
+                $ref: '../common.schemas.yaml#/schemas/ErrorResponse'
         "401":
           $ref: '../common.schemas.yaml#/errors/Unauthorized'
         "403":
