@@ -44,8 +44,8 @@ describe("parseChannelUsersJsonl", () => {
   it("parses valid JSONL channel users", () => {
     const result = parseChannelUsersJsonl(
       [
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}",
-        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"dingding\",\"openid\":\"o-2\"}}"
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}",
+        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"dingding\",\"user_id\":\"o-2\"}}"
       ].join("\n")
     );
 
@@ -54,16 +54,16 @@ describe("parseChannelUsersJsonl", () => {
     expect(result.users[0]).toMatchObject({
       id: deriveChannelUserId("feishu", "o-1"),
       displayName: "Alice",
-      channel: { type: "feishu", openid: "o-1" }
+      channel: { type: "feishu", user_id: "o-1" }
     });
   });
 
   it("reports duplicate reasons on later lines", () => {
     const result = parseChannelUsersJsonl(
       [
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}",
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-2\"}}",
-        "{\"displayName\":\"Carol\",\"channel\":{\"type\":\"dingding\",\"openid\":\"o-1\"}}"
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}",
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-2\"}}",
+        "{\"displayName\":\"Carol\",\"channel\":{\"type\":\"dingding\",\"user_id\":\"o-1\"}}"
       ].join("\n")
     );
 
@@ -74,7 +74,7 @@ describe("parseChannelUsersJsonl", () => {
       }),
       expect.objectContaining({
         line: 3,
-        reason: "与前面记录重复：channel.openid 已存在"
+        reason: "与前面记录重复：channel.user_id 已存在"
       })
     ]);
   });
@@ -84,7 +84,7 @@ describe("parseChannelUsersJsonl", () => {
       [
         "not-json",
         "{\"displayName\":\"Alice\"}",
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"slack\",\"openid\":\"o-1\"}}"
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"slack\",\"user_id\":\"o-1\"}}"
       ].join("\n")
     );
 
@@ -107,13 +107,13 @@ describe("parseChannelUsersJsonl", () => {
     expect(result.errors).toEqual([
       expect.objectContaining({ line: 1, reason: "记录必须是 JSON 对象" }),
       expect.objectContaining({ line: 2, reason: "缺少字段 channel" }),
-      expect.objectContaining({ line: 3, reason: "缺少字段 channel.openid" })
+      expect.objectContaining({ line: 3, reason: "缺少字段 channel.user_id" })
     ]);
   });
 
   it("rejects records that still contain id", () => {
     const result = parseChannelUsersJsonl(
-      "{\"id\":\"legacy\",\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}"
+      "{\"id\":\"legacy\",\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}"
     );
 
     expect(result.errors).toEqual([
@@ -148,9 +148,9 @@ describe("DefaultChannelUserLogic", () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
       [
-        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"dingding\",\"openid\":\"o-2\"}}",
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}",
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"dingding\",\"openid\":\"o-3\"}}"
+        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"dingding\",\"user_id\":\"o-2\"}}",
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}",
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"dingding\",\"user_id\":\"o-3\"}}"
       ].join("\n"),
       "utf-8"
     );
@@ -168,7 +168,7 @@ describe("DefaultChannelUserLogic", () => {
     expect(result.items).toEqual([
       {
         displayName: "Alice",
-        channel: { type: "dingding", openid: "o-3" }
+        channel: { type: "dingding", user_id: "o-3" }
       }
     ]);
   });
@@ -177,10 +177,10 @@ describe("DefaultChannelUserLogic", () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
       [
-        "{\"displayName\":\"王子\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}",
-        "{\"displayName\":\"王子文\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-2\"}}",
-        "{\"displayName\":\"数学王子\",\"channel\":{\"type\":\"dingding\",\"openid\":\"o-3\"}}",
-        "{\"displayName\":\"小明\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-4\"}}"
+        "{\"displayName\":\"王子\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}",
+        "{\"displayName\":\"王子文\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-2\"}}",
+        "{\"displayName\":\"数学王子\",\"channel\":{\"type\":\"dingding\",\"user_id\":\"o-3\"}}",
+        "{\"displayName\":\"小明\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-4\"}}"
       ].join("\n"),
       "utf-8"
     );
@@ -193,15 +193,15 @@ describe("DefaultChannelUserLogic", () => {
     expect(result.items).toEqual([
       {
         displayName: "数学王子",
-        channel: { type: "dingding", openid: "o-3" }
+        channel: { type: "dingding", user_id: "o-3" }
       },
       {
         displayName: "王子",
-        channel: { type: "feishu", openid: "o-1" }
+        channel: { type: "feishu", user_id: "o-1" }
       },
       {
         displayName: "王子文",
-        channel: { type: "feishu", openid: "o-2" }
+        channel: { type: "feishu", user_id: "o-2" }
       }
     ]);
   });
@@ -210,9 +210,9 @@ describe("DefaultChannelUserLogic", () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
       [
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}",
-        "{\"displayName\":\"ALINA\",\"channel\":{\"type\":\"dingding\",\"openid\":\"o-2\"}}",
-        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-3\"}}"
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}",
+        "{\"displayName\":\"ALINA\",\"channel\":{\"type\":\"dingding\",\"user_id\":\"o-2\"}}",
+        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-3\"}}"
       ].join("\n"),
       "utf-8"
     );
@@ -225,11 +225,11 @@ describe("DefaultChannelUserLogic", () => {
     expect(result.items).toEqual([
       {
         displayName: "Alice",
-        channel: { type: "feishu", openid: "o-1" }
+        channel: { type: "feishu", user_id: "o-1" }
       },
       {
         displayName: "ALINA",
-        channel: { type: "dingding", openid: "o-2" }
+        channel: { type: "dingding", user_id: "o-2" }
       }
     ]);
   });
@@ -238,8 +238,8 @@ describe("DefaultChannelUserLogic", () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
       [
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}",
-        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-2\"}}"
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}",
+        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-2\"}}"
       ].join("\n"),
       "utf-8"
     );
@@ -260,9 +260,9 @@ describe("DefaultChannelUserLogic", () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
       [
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}",
-        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-2\"}}",
-        "{\"displayName\":\"Carol\",\"channel\":{\"type\":\"dingding\",\"openid\":\"o-3\"}}"
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}",
+        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-2\"}}",
+        "{\"displayName\":\"Carol\",\"channel\":{\"type\":\"dingding\",\"user_id\":\"o-3\"}}"
       ].join("\n"),
       "utf-8"
     );
@@ -299,7 +299,7 @@ describe("DefaultChannelUserLogic", () => {
     expect(result.items).toEqual([
       {
         displayName: "Bob",
-        channel: { type: "feishu", openid: "o-2" }
+        channel: { type: "feishu", user_id: "o-2" }
       }
     ]);
   });
@@ -308,9 +308,9 @@ describe("DefaultChannelUserLogic", () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
       [
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}",
-        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-2\"}}",
-        "{\"displayName\":\"Carol\",\"channel\":{\"type\":\"dingding\",\"openid\":\"o-3\"}}"
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}",
+        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-2\"}}",
+        "{\"displayName\":\"Carol\",\"channel\":{\"type\":\"dingding\",\"user_id\":\"o-3\"}}"
       ].join("\n"),
       "utf-8"
     );
@@ -419,7 +419,7 @@ describe("DefaultChannelUserLogic", () => {
       displayName: "Alice",
       channel: {
         type: "feishu",
-        openid: "o-1"
+        user_id: "o-1"
       }
     });
 
@@ -436,7 +436,7 @@ describe("DefaultChannelUserLogic", () => {
   it("rejects duplicate channel user combinations", async () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
-      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}\n",
+      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}\n",
       "utf-8"
     );
 
@@ -449,7 +449,7 @@ describe("DefaultChannelUserLogic", () => {
         displayName: "Alice",
         channel: {
           type: "feishu",
-          openid: "o-2"
+          user_id: "o-2"
         }
       })
     ).rejects.toMatchObject({ statusCode: 409 });
@@ -465,16 +465,16 @@ describe("DefaultChannelUserLogic", () => {
         displayName: "Alice",
         channel: {
           type: "feishu",
-          openid: "o-1"
+          user_id: "o-1"
         }
       })
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 
-  it("rewrites allowFrom values when a channel user openid changes", async () => {
+  it("rewrites allowFrom values when a channel user user_id changes", async () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
-      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}\n",
+      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}\n",
       "utf-8"
     );
     const patchConfig = vi.fn().mockResolvedValue({ ok: true });
@@ -503,7 +503,7 @@ describe("DefaultChannelUserLogic", () => {
       displayName: "Alice",
       channel: {
         type: "feishu",
-        openid: "o-9"
+        user_id: "o-9"
       }
     });
 
@@ -527,8 +527,8 @@ describe("DefaultChannelUserLogic", () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
       [
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}",
-        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-2\"}}"
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}",
+        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-2\"}}"
       ].join("\n"),
       "utf-8"
     );
@@ -626,8 +626,8 @@ describe("DefaultChannelUserLogic", () => {
 
     const result = await logic.importChannelUsers(
       [
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}",
-        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"dingding\",\"openid\":\"ding-1\"}}"
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}",
+        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"dingding\",\"user_id\":\"ding-1\"}}"
       ].join("\n")
     );
 
@@ -680,7 +680,7 @@ describe("DefaultChannelUserLogic", () => {
     });
 
     await logic.importChannelUsers(
-      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}"
+      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}"
     );
 
     expect(patchConfig).toHaveBeenCalledWith({
@@ -717,7 +717,7 @@ describe("DefaultChannelUserLogic", () => {
   it("preserves local config content when config.get returns invalid JSON during patch", async () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
-      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}\n",
+      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}\n",
       "utf-8"
     );
     const patchConfig = vi.fn().mockResolvedValue({ ok: true });
@@ -732,7 +732,7 @@ describe("DefaultChannelUserLogic", () => {
     });
 
     await logic.importChannelUsers(
-      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}"
+      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}"
     );
 
     expect(patchConfig).toHaveBeenCalledWith({
@@ -744,7 +744,7 @@ describe("DefaultChannelUserLogic", () => {
   it("keeps the local mutation when config.get returns malformed JSON text", async () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
-      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}\n",
+      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}\n",
       "utf-8"
     );
     const patchConfig = vi.fn().mockResolvedValue({ ok: true });
@@ -759,7 +759,7 @@ describe("DefaultChannelUserLogic", () => {
     });
 
     await logic.importChannelUsers(
-      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}"
+      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}"
     );
 
     expect(patchConfig).toHaveBeenCalledWith({
@@ -768,12 +768,12 @@ describe("DefaultChannelUserLogic", () => {
     });
   });
 
-  it("updates one digital human allowFrom list by selected channel user openids", async () => {
+  it("updates one digital human allowFrom list by selected channel user user_ids", async () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
       [
-        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}",
-        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-2\"}}"
+        "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}",
+        "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-2\"}}"
       ].join("\n"),
       "utf-8"
     );
@@ -845,10 +845,10 @@ describe("DefaultChannelUserLogic", () => {
     });
   });
 
-  it("rejects channel user openids from a different channel when updating digital human scope", async () => {
+  it("rejects channel user user_ids from a different channel when updating digital human scope", async () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
-      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"dingding\",\"openid\":\"ding-1\"}}\n",
+      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"dingding\",\"user_id\":\"ding-1\"}}\n",
       "utf-8"
     );
     const config = {
@@ -884,7 +884,7 @@ describe("DefaultChannelUserLogic", () => {
     ).rejects.toMatchObject({ statusCode: 400 });
   });
 
-  it("rejects unknown channel user openids when updating digital human scope", async () => {
+  it("rejects unknown channel user user_ids when updating digital human scope", async () => {
     writeFileSync(
       join(fakeHome, ".openclaw", "openclaw.json"),
       JSON.stringify({
@@ -916,7 +916,7 @@ describe("DefaultChannelUserLogic", () => {
 
     await expect(
       logic.updateDigitalHumanChannelUsers("agent-1", {
-        allowFrom: ["missing-openid"]
+        allowFrom: ["missing-user_id"]
       })
     ).rejects.toMatchObject({ statusCode: 400 });
   });
@@ -924,7 +924,7 @@ describe("DefaultChannelUserLogic", () => {
   it("falls back to writing local openclaw.json when config.patch fails", async () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
-      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}\n",
+      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}\n",
       "utf-8"
     );
     writeFileSync(
@@ -970,7 +970,7 @@ describe("DefaultChannelUserLogic", () => {
   it("updates the default account when binding accountId is missing", async () => {
     writeFileSync(
       resolveChannelUsersFilePath(),
-      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}\n",
+      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}\n",
       "utf-8"
     );
     const patchConfig = vi.fn().mockResolvedValue({ ok: true });
@@ -1041,8 +1041,8 @@ describe("DefaultChannelUserLogic", () => {
 
   it("exports raw persisted JSONL with the expected filename", async () => {
     const rawContent = [
-      "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"dingding\",\"openid\":\"o-2\"}}",
-      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}"
+      "{\"displayName\":\"Bob\",\"channel\":{\"type\":\"dingding\",\"user_id\":\"o-2\"}}",
+      "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}"
     ].join("\n");
     writeFileSync(
       resolveChannelUsersFilePath(),

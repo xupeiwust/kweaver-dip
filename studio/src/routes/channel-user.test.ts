@@ -97,14 +97,14 @@ describe("readUpsertChannelUserRequest", () => {
         displayName: "Alice",
         channel: {
           type: "dingding",
-          openid: "o-1"
+          user_id: "o-1"
         }
       })
     ).toEqual({
       displayName: "Alice",
       channel: {
         type: "dingding",
-        openid: "o-1"
+        user_id: "o-1"
       }
     });
   });
@@ -114,15 +114,15 @@ describe("readUpsertChannelUserRequest", () => {
     expect(() => readUpsertChannelUserRequest({ displayName: "Alice" })).toThrow("channel is required");
     expect(() => readUpsertChannelUserRequest({
       displayName: "Alice",
-      channel: { type: "slack", openid: "o-1" }
+      channel: { type: "slack", user_id: "o-1" }
     })).toThrow('type must be "feishu" or "dingding"');
     expect(() => readUpsertChannelUserRequest({
       displayName: "",
-      channel: { type: "feishu", openid: "o-1" }
+      channel: { type: "feishu", user_id: "o-1" }
     })).toThrow("displayName is required");
     expect(() => readUpsertChannelUserRequest({
       displayName: "Alice",
-      channel: { openid: "o-1" }
+      channel: { user_id: "o-1" }
     })).toThrow('channel.type must be "feishu" or "dingding"');
   });
 });
@@ -133,7 +133,7 @@ describe("createChannelUserRouter", () => {
     const next = vi.fn<NextFunction>();
     const router = createChannelUserRouter({
       listChannelUsers: vi.fn().mockResolvedValue({
-        items: [{ displayName: "Alice", channel: { type: "feishu", openid: "o-1" } }],
+        items: [{ displayName: "Alice", channel: { type: "feishu", user_id: "o-1" } }],
         total: 1,
         start: 0,
         limit: 50
@@ -154,7 +154,7 @@ describe("createChannelUserRouter", () => {
 
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith({
-      items: [{ displayName: "Alice", channel: { type: "feishu", openid: "o-1" } }],
+      items: [{ displayName: "Alice", channel: { type: "feishu", user_id: "o-1" } }],
       total: 1,
       start: 0,
       limit: 50
@@ -197,7 +197,7 @@ describe("createChannelUserRouter", () => {
       displayName: "Alice",
       channel: {
         type: "feishu",
-        openid: "o-1"
+        user_id: "o-1"
       }
     });
     const router = createChannelUserRouter({
@@ -216,7 +216,7 @@ describe("createChannelUserRouter", () => {
           displayName: "Alice",
           channel: {
             type: "feishu",
-            openid: "o-1"
+            user_id: "o-1"
           }
         }
       } as unknown as Request,
@@ -228,7 +228,7 @@ describe("createChannelUserRouter", () => {
       displayName: "Alice",
       channel: {
         type: "feishu",
-        openid: "o-1"
+        user_id: "o-1"
       }
     });
     expect(response.status).toHaveBeenCalledWith(201);
@@ -240,7 +240,7 @@ describe("createChannelUserRouter", () => {
     const updateChannelUser = vi.fn().mockResolvedValue({
       id: "feishu:o-2",
       displayName: "Alice",
-      channel: { type: "feishu", openid: "o-2" }
+      channel: { type: "feishu", user_id: "o-2" }
     });
     const deleteChannelUser = vi.fn().mockResolvedValue(undefined);
     const router = createChannelUserRouter({
@@ -258,7 +258,7 @@ describe("createChannelUserRouter", () => {
         params: { id: "feishu:o-1" },
         body: {
           displayName: "Alice",
-          channel: { type: "feishu", openid: "o-2" }
+          channel: { type: "feishu", user_id: "o-2" }
         }
       } as unknown as Request,
       response,
@@ -272,7 +272,7 @@ describe("createChannelUserRouter", () => {
 
     expect(updateChannelUser).toHaveBeenCalledWith("feishu:o-1", {
       displayName: "Alice",
-      channel: { type: "feishu", openid: "o-2" }
+      channel: { type: "feishu", user_id: "o-2" }
     });
     expect(deleteChannelUser).toHaveBeenCalledWith("feishu:o-1");
     expect(response.end).toHaveBeenCalled();
@@ -323,7 +323,7 @@ describe("createChannelUserRouter", () => {
       importChannelUsers: vi.fn(),
       exportChannelUsers: vi.fn().mockResolvedValue({
         filename: "通道用户_2026_04_16_15_16_08.jsonl",
-        content: "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}\n"
+        content: "{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}\n"
       }),
       updateDigitalHumanChannelUsers: vi.fn()
     });
@@ -339,7 +339,7 @@ describe("createChannelUserRouter", () => {
       "application/x-ndjson; charset=utf-8"
     );
     expect(response.status).toHaveBeenCalledWith(200);
-    expect(response.send).toHaveBeenCalledWith("{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}\n");
+    expect(response.send).toHaveBeenCalledWith("{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}\n");
   });
 
   it("fails import when multipart file is missing", async () => {
@@ -386,14 +386,14 @@ describe("createChannelUserRouter", () => {
     await findHandler(router as Router, "post", "/api/dip-studio/v1/channel-users/import", 1)?.(
       {
         file: {
-          buffer: Buffer.from("{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}\n")
+          buffer: Buffer.from("{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}\n")
         }
       } as unknown as Request,
       response,
       next
     );
 
-    expect(importChannelUsers).toHaveBeenCalledWith("{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}\n");
+    expect(importChannelUsers).toHaveBeenCalledWith("{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}\n");
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith({ count: 1 });
   });
@@ -414,7 +414,7 @@ describe("createChannelUserRouter", () => {
     await findHandler(router as Router, "post", "/api/dip-studio/v1/channel-users/import", 1)?.(
       {
         file: {
-          buffer: Buffer.from("{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"openid\":\"o-1\"}}\n")
+          buffer: Buffer.from("{\"displayName\":\"Alice\",\"channel\":{\"type\":\"feishu\",\"user_id\":\"o-1\"}}\n")
         }
       } as unknown as Request,
       response,

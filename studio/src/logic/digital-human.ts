@@ -25,7 +25,8 @@ import {
   mergeFilesToTemplate,
   mergeTemplatePatch,
   renderIdentityMarkdown,
-  renderSoulMarkdown
+  renderSoulMarkdown,
+  renderToolsMarkdown
 } from "./digital-human-template";
 
 const HIDDEN_DIGITAL_HUMAN_IDS = new Set(["main", "__internal_skill_agent__"]);
@@ -347,8 +348,8 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
   }
 
   /**
-   * Updates IDENTITY.md and SOUL.md through OpenClaw file RPCs: `agents.files.list`
-   * then parallel `agents.files.set` calls, per the digital human design.
+   * Updates IDENTITY.md, SOUL.md, and TOOLS.md through OpenClaw file RPCs:
+   * `agents.files.list` then parallel `agents.files.set` calls.
    *
    * @param agentId The OpenClaw agent id.
    * @param template The template to render into markdown files.
@@ -360,6 +361,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
     await this.openClawAgentsAdapter.listAgentFiles({ agentId });
     const identityMd = renderIdentityMarkdown(template);
     const soulMd = renderSoulMarkdown(template);
+    const toolsMd = renderToolsMarkdown();
     await Promise.all([
       this.openClawAgentsAdapter.setAgentFile({
         agentId,
@@ -370,6 +372,11 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
         agentId,
         name: "SOUL.md",
         content: soulMd
+      }),
+      this.openClawAgentsAdapter.setAgentFile({
+        agentId,
+        name: "TOOLS.md",
+        content: toolsMd
       })
     ]);
   }

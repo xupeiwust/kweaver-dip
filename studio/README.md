@@ -494,7 +494,26 @@ DIP 数字员工 Web 界面
 | 参数 | 类型 | 说明 |
 | -- | -- | -- |
 | type | `"feishu" \| "dingding"` | 通道类型 |
-| openid | string | 通道用户 OpenID |
+| user_id | string | 通道用户 User ID |
+
+#### 创建通道用户
+
+`POST /api/dip-studio/v1/channel-users`
+
+请求体：`application/json`
+
+| 参数 | 类型 | 是否必填 | 说明 |
+| -- | -- | -- | -- |
+| displayName | string | 是 | 通道用户显示名 |
+| channel | ChannelUserChannel | 是 | 通道信息 |
+
+响应：`201 application/json`
+
+| 参数 | 类型 | 说明 |
+| -- | -- | -- |
+| id | string | 通道用户 ID |
+| displayName | string | 通道用户显示名 |
+| channel | ChannelUserChannel | 通道信息 |
 
 #### 更新通道用户
 
@@ -521,6 +540,18 @@ DIP 数字员工 Web 界面
 | displayName | string | 通道用户显示名 |
 | channel | ChannelUserChannel | 通道信息 |
 
+#### 删除通道用户
+
+`DELETE /api/dip-studio/v1/channel-users/{id}`
+
+路径参数：
+
+| 参数 | 类型 | 是否必填 | 说明 |
+| -- | -- | -- | -- |
+| id | string | 是 | 通道用户 ID |
+
+响应：`204 No Content`
+
 #### 导出通道用户 JSONL
 
 `GET /api/dip-studio/v1/channel-users/export`
@@ -545,7 +576,7 @@ DIP 数字员工 Web 界面
 | -- | -- | -- |
 | count | integer | 成功导入的通道用户数量 |
 
-校验失败时会在错误详情中返回具体行号和原因；重复记录会明确提示为 `与前面记录重复：channel.openid 已存在` 或 `与前面记录重复：displayName + channel.type 组合已存在`。
+校验失败时会在错误详情中返回具体行号和原因；重复记录会明确提示为 `与前面记录重复：channel.user_id 已存在` 或 `与前面记录重复：displayName + channel.type 组合已存在`。
 
 #### 获取指定数字员工可 @ 的通道用户列表
 
@@ -582,7 +613,7 @@ DIP 数字员工 Web 界面
 
 | 参数 | 类型 | 是否必填 | 说明 |
 | -- | -- | -- | -- |
-| allowFrom | string[] | 是 | 通道用户 OpenID 列表 |
+| allowFrom | string[] | 是 | 通道用户 User ID 列表 |
 
 响应：`200 application/json`
 
@@ -590,7 +621,7 @@ DIP 数字员工 Web 界面
 | -- | -- | -- |
 | digitalHumanId | string | 数字员工 ID |
 | channelType | `"feishu" \| "dingding"` | 数字员工绑定的通道类型 |
-| allowFrom | string[] | 实际写入 OpenClaw `allowFrom` 的 OpenID 列表 |
+| allowFrom | string[] | 实际写入 OpenClaw `allowFrom` 的 User ID 列表 |
 
 #### 获取全局启用技能列表
 

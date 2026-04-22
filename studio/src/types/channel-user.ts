@@ -13,9 +13,9 @@ export interface ChannelUserChannel {
   type: ChannelUserType;
 
   /**
-   * Channel-specific user OpenID.
+   * Channel-specific user ID.
    */
-  openid: string;
+  user_id: string;
 }
 
 /**
@@ -23,7 +23,7 @@ export interface ChannelUserChannel {
  */
 export interface ChannelUser {
   /**
-   * Stable API identifier derived from the channel type and OpenID.
+   * Stable API identifier derived from the channel type and User ID.
    * This field is returned by the HTTP API and is not persisted in JSONL.
    */
   id: string;
@@ -174,7 +174,7 @@ export interface ChannelUserExportResult {
  */
 export interface UpdateDigitalHumanChannelUsersRequest {
   /**
-   * Selected channel user OpenIDs.
+   * Selected channel user IDs.
    */
   allowFrom: string[];
 }
@@ -194,7 +194,7 @@ export interface DigitalHumanChannelUsersResponse {
   channelType: ChannelUserType;
 
   /**
-   * Effective OpenID whitelist written to `allowFrom`.
+   * Effective User ID whitelist written to `allowFrom`.
    */
   allowFrom: string[];
 }

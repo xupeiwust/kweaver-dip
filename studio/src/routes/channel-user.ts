@@ -60,6 +60,27 @@ export function createChannelUserRouter(
     }
   );
 
+  router.post(
+    "/api/dip-studio/v1/channel-users",
+    async (
+      request: Request<unknown, ChannelUser, UpsertChannelUserRequest>,
+      response: Response<ChannelUser>,
+      next: NextFunction
+    ): Promise<void> => {
+      try {
+        response.status(201).json(
+          await logic.createChannelUser(readUpsertChannelUserRequest(request.body))
+        );
+      } catch (error) {
+        next(
+          error instanceof HttpError
+            ? error
+            : new HttpError(502, "Failed to create channel user")
+        );
+      }
+    }
+  );
+
   router.put(
     "/api/dip-studio/v1/channel-users/:id",
     async (
@@ -77,6 +98,27 @@ export function createChannelUserRouter(
           error instanceof HttpError
             ? error
             : new HttpError(502, "Failed to update channel user")
+        );
+      }
+    }
+  );
+
+  router.delete(
+    "/api/dip-studio/v1/channel-users/:id",
+    async (
+      request: Request<{ id: string }>,
+      response: Response,
+      next: NextFunction
+    ): Promise<void> => {
+      try {
+        const id = readRequiredIdParam(request.params.id, "id");
+        await logic.deleteChannelUser(id);
+        response.status(204).end();
+      } catch (error) {
+        next(
+          error instanceof HttpError
+            ? error
+            : new HttpError(502, "Failed to delete channel user")
         );
       }
     }
@@ -152,7 +194,7 @@ export function readUpsertChannelUserRequest(body: unknown): UpsertChannelUserRe
     displayName,
     channel: {
       type: readRequiredChannelUserType(channel.type),
-      openid: readRequiredTrimmedString(channel.openid, "channel.openid")
+      user_id: readRequiredTrimmedString(channel.user_id, "channel.user_id")
     }
   };
 }

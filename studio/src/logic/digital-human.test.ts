@@ -889,6 +889,13 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
         content: expect.stringContaining("Hi") as string
       })
     );
+    expect(setAgentFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: result.id,
+        name: "TOOLS.md",
+        content: expect.stringContaining("## 投递通道消息") as string
+      })
+    );
     expect(updateAgentSkills).toHaveBeenCalledWith(result.id, [
       "archive-protocol",
       "schedule-plan",
@@ -1121,6 +1128,13 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
         agentId: id,
         name: "SOUL.md",
         content: expect.stringContaining("New soul") as string
+      })
+    );
+    expect(setAgentFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: id,
+        name: "TOOLS.md",
+        content: expect.stringContaining("## 投递通道消息") as string
       })
     );
   });

@@ -10,6 +10,8 @@ import type {
 
 /** Markdown body with `{{de_setting}}` / `{{bkn_content}}` slots (file kept as `.pug` path in repo). */
 const SOUL_TEMPLATE_FILE = "de_agent_soul.pug";
+/** Markdown body used for TOOLS.md (file kept as `.pug` path in repo). */
+const TOOLS_TEMPLATE_FILE = "TOOLS.md.pug";
 
 const SLOT_DE_SETTING = "{{de_setting}}";
 const SLOT_BKN_CONTENT = "{{bkn_content}}";
@@ -79,6 +81,15 @@ export function resolveSoulTemplatePath(): string {
 }
 
 /**
+ * Resolves the absolute path to `templates/TOOLS.md.pug` (used for TOOLS.md).
+ *
+ * @returns The absolute path to the tools markdown template.
+ */
+export function resolveToolsTemplatePath(): string {
+  return join(process.cwd(), "templates", TOOLS_TEMPLATE_FILE);
+}
+
+/**
  * Renders the IDENTITY.md content from a template.
  *
  * Follows the OpenClaw `- Key: Value` convention so that the built-in
@@ -127,6 +138,18 @@ export function renderSoulMarkdown(template: DigitalHumanTemplate): string {
   return raw
     .replaceAll(SLOT_DE_SETTING, de_setting)
     .replaceAll(SLOT_BKN_CONTENT, bkn_content);
+}
+
+/**
+ * Renders TOOLS.md from `templates/TOOLS.md.pug`.
+ *
+ * The current template is static Markdown and intentionally read as text, matching
+ * the SOUL.md template rendering style used by this module.
+ *
+ * @returns The full TOOLS.md markdown string.
+ */
+export function renderToolsMarkdown(): string {
+  return readFileSync(resolveToolsTemplatePath(), "utf8");
 }
 
 /** Prefixes each line with `> ` for the persona block under “角色定义”. */

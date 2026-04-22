@@ -264,7 +264,7 @@ components:
       properties:
         allowFrom:
           type: array
-          description: 通道用户 OpenID 列表
+          description: 通道用户 User ID 列表
           items:
             type: string
       required:
@@ -283,7 +283,7 @@ components:
             - dingding
         allowFrom:
           type: array
-          description: 实际写入 OpenClaw `allowFrom` 的 OpenID 列表
+          description: 实际写入 OpenClaw `allowFrom` 的 User ID 列表
           items:
             type: string
       required:

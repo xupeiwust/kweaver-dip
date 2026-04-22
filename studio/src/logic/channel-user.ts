@@ -36,6 +36,14 @@ export interface ChannelUserLogic {
   listChannelUsers(query: ChannelUserListQuery): Promise<ChannelUserListResponse>;
 
   /**
+   * Creates one channel user record.
+   *
+   * @param input The validated creation payload.
+   * @returns The created channel user.
+   */
+  createChannelUser(input: UpsertChannelUserRequest): Promise<ChannelUser>;
+
+  /**
    * Updates one existing channel user record.
    *
    * @param id Target channel user identifier.
@@ -43,6 +51,13 @@ export interface ChannelUserLogic {
    * @returns The updated channel user.
    */
   updateChannelUser(id: string, input: UpsertChannelUserRequest): Promise<ChannelUser>;
+
+  /**
+   * Deletes one existing channel user record and removes it from message scopes.
+   *
+   * @param id Target channel user identifier.
+   */
+  deleteChannelUser(id: string): Promise<void>;
 
   /**
    * Replaces the channel user JSONL file with uploaded content after validation.
@@ -121,7 +136,7 @@ export class DefaultChannelUserLogic implements ChannelUserLogic {
         if (scope.allowFrom === "*") {
           return true;
         }
-        return scope.allowFrom.has(user.channel.openid);
+        return scope.allowFrom.has(user.channel.user_id);
       });
     }
 
@@ -145,9 +160,29 @@ export class DefaultChannelUserLogic implements ChannelUserLogic {
   /**
    * @inheritdoc
    */
+  public async createChannelUser(input: UpsertChannelUserRequest): Promise<ChannelUser> {
+    const users = await readChannelUsersFile();
+    assertChannelUserUniqueness(users, input);
+
+    const created = toChannelUserApi({
+      displayName: input.displayName.trim(),
+      channel: {
+        type: input.channel.type,
+        user_id: input.channel.user_id.trim()
+      }
+    });
+
+    users.push(created);
+    await writeChannelUsersFile(sortChannelUsers(users));
+    return created;
+  }
+
+  /**
+   * @inheritdoc
+   */
   public async updateChannelUser(id: string, input: UpsertChannelUserRequest): Promise<ChannelUser> {
     const users = await readChannelUsersFile();
-    const index = users.findIndex((user) => deriveChannelUserId(user.channel.type, user.channel.openid) === id);
+    const index = users.findIndex((user) => deriveChannelUserId(user.channel.type, user.channel.user_id) === id);
     if (index < 0) {
       throw new HttpError(404, `Channel user not found: ${id}`);
     }
@@ -159,20 +194,38 @@ export class DefaultChannelUserLogic implements ChannelUserLogic {
       displayName: input.displayName.trim(),
       channel: {
         type: input.channel.type,
-        openid: input.channel.openid.trim()
+        user_id: input.channel.user_id.trim()
       }
     });
 
     users[index] = updated;
     await writeChannelUsersFile(sortChannelUsers(users));
 
-    if (current.channel.openid !== updated.channel.openid || current.channel.type !== updated.channel.type) {
+    if (current.channel.user_id !== updated.channel.user_id || current.channel.type !== updated.channel.type) {
       await rewriteOpenClawConfig(async (config) => {
-        replaceAllowFromValue(config, current.channel.type, current.channel.openid, updated.channel.openid);
+        replaceAllowFromValue(config, current.channel.type, current.channel.user_id, updated.channel.user_id);
       }, this.openClawAgentsAdapter);
     }
 
     return updated;
+  }
+
+  /**
+   * @inheritdoc
+   */
+  public async deleteChannelUser(id: string): Promise<void> {
+    const users = await readChannelUsersFile();
+    const index = users.findIndex((user) => deriveChannelUserId(user.channel.type, user.channel.user_id) === id);
+    if (index < 0) {
+      throw new HttpError(404, `Channel user not found: ${id}`);
+    }
+
+    const [removed] = users.splice(index, 1);
+    await writeChannelUsersFile(sortChannelUsers(users));
+
+    await rewriteOpenClawConfig(async (config) => {
+      removeAllowFromValue(config, removed.channel.type, removed.channel.user_id);
+    }, this.openClawAgentsAdapter);
   }
   /**
    * @inheritdoc
@@ -192,8 +245,8 @@ export class DefaultChannelUserLogic implements ChannelUserLogic {
     await writeChannelUsersFile(sorted);
     await rewriteOpenClawConfig(async (config) => {
       pruneAllowFromValues(config, new Map([
-        ["feishu", new Set(sorted.filter((user) => user.channel.type === "feishu").map((user) => user.channel.openid))],
-        ["dingding", new Set(sorted.filter((user) => user.channel.type === "dingding").map((user) => user.channel.openid))]
+        ["feishu", new Set(sorted.filter((user) => user.channel.type === "feishu").map((user) => user.channel.user_id))],
+        ["dingding", new Set(sorted.filter((user) => user.channel.type === "dingding").map((user) => user.channel.user_id))]
       ]));
     }, this.openClawAgentsAdapter);
 
@@ -223,15 +276,15 @@ export class DefaultChannelUserLogic implements ChannelUserLogic {
     const channelUsers = await readChannelUsersFile();
     const scope = await readDigitalHumanChannelScope(digitalHumanId);
     const allowFrom = dedupeStrings(request.allowFrom);
-    const selectedUsers = allowFrom.map((openid) => {
-      const user = channelUsers.find((item) => item.channel.openid === openid);
+    const selectedUsers = allowFrom.map((userId) => {
+      const user = channelUsers.find((item) => item.channel.user_id === userId);
       if (user === undefined) {
-        throw new HttpError(400, `Channel user openid not found: ${openid}`);
+        throw new HttpError(400, `Channel user id not found: ${userId}`);
       }
       if (user.channel.type !== scope.channelType) {
         throw new HttpError(
           400,
-          `Channel user openid ${openid} does not belong to digital human channel ${scope.channelType}`
+          `Channel user id ${userId} does not belong to digital human channel ${scope.channelType}`
         );
       }
       return user;
@@ -308,7 +361,7 @@ export function parseChannelUsersJsonl(
 ): { users: ChannelUser[]; errors: ChannelUserImportError[] } {
   const users: ChannelUser[] = [];
   const errors: ChannelUserImportError[] = [];
-  const seenOpenIds = new Map<string, number>();
+  const seenUserIds = new Map<string, number>();
   const seenDisplayChannel = new Map<string, number>();
 
   const lines = content.split(/\r?\n/);
@@ -335,7 +388,7 @@ export function parseChannelUsersJsonl(
 
     const duplicateReason = resolveDuplicateReason(
       result.user,
-      seenOpenIds,
+      seenUserIds,
       seenDisplayChannel,
       line
     );
@@ -394,7 +447,7 @@ function sortChannelUsers(users: ChannelUser[]): ChannelUser[] {
     if (channel !== 0) {
       return channel;
     }
-    return left.channel.openid.localeCompare(right.channel.openid);
+    return left.channel.user_id.localeCompare(right.channel.user_id);
   });
 }
 
@@ -411,20 +464,20 @@ function assertChannelUserUniqueness(
   excludeId?: string
 ): void {
   const displayName = input.displayName.trim();
-  const openid = input.channel.openid.trim();
+  const userId = input.channel.user_id.trim();
   const key = `${input.channel.type}::${displayName}`;
 
   if (users.some(
     (user) =>
-      deriveChannelUserId(user.channel.type, user.channel.openid) !== excludeId
-      && user.channel.openid === openid
+      deriveChannelUserId(user.channel.type, user.channel.user_id) !== excludeId
+      && user.channel.user_id === userId
   )) {
-    throw new HttpError(409, `Channel openid already exists: ${openid}`);
+    throw new HttpError(409, `Channel user_id already exists: ${userId}`);
   }
 
   if (users.some(
     (user) =>
-      deriveChannelUserId(user.channel.type, user.channel.openid) !== excludeId
+      deriveChannelUserId(user.channel.type, user.channel.user_id) !== excludeId
       && `${user.channel.type}::${user.displayName}` === key
   )) {
     throw new HttpError(409, `Channel user already exists: ${displayName} + ${input.channel.type}`);
@@ -458,21 +511,21 @@ function normalizeParsedChannelUser(
 
   const channel = raw.channel as Record<string, unknown>;
   const type = channel.type;
-  const openid = typeof channel.openid === "string" ? channel.openid.trim() : "";
+  const userId = typeof channel.user_id === "string" ? channel.user_id.trim() : "";
   if (type !== "feishu" && type !== "dingding") {
     return { reason: "channel.type 必须为 feishu 或 dingding" };
   }
-  if (openid.length === 0) {
-    return { reason: "缺少字段 channel.openid" };
+  if (userId.length === 0) {
+    return { reason: "缺少字段 channel.user_id" };
   }
 
   return {
     user: {
-      id: deriveChannelUserId(type, openid),
+      id: deriveChannelUserId(type, userId),
       displayName,
       channel: {
         type,
-        openid
+        user_id: userId
       }
     }
   };
@@ -482,27 +535,27 @@ function normalizeParsedChannelUser(
  * Detects duplicate JSONL rows according to the uniqueness constraints.
  *
  * @param user Candidate parsed channel user.
- * @param seenOpenIds Seen openids map.
+ * @param seenUserIds Seen user IDs map.
  * @param seenDisplayChannel Seen displayName + type combinations map.
  * @param line Current line number.
  * @returns Duplicate error reason, if any.
  */
 function resolveDuplicateReason(
   user: ChannelUser,
-  seenOpenIds: Map<string, number>,
+  seenUserIds: Map<string, number>,
   seenDisplayChannel: Map<string, number>,
   line: number
 ): string | undefined {
   const displayKey = `${user.channel.type}::${user.displayName}`;
-  if (seenOpenIds.has(user.channel.openid)) {
-    return "与前面记录重复：channel.openid 已存在";
+  if (seenUserIds.has(user.channel.user_id)) {
+    return "与前面记录重复：channel.user_id 已存在";
   }
 
   if (seenDisplayChannel.has(displayKey)) {
     return "与前面记录重复：displayName + channel.type 组合已存在";
   }
 
-  seenOpenIds.set(user.channel.openid, line);
+  seenUserIds.set(user.channel.user_id, line);
   seenDisplayChannel.set(displayKey, line);
   return undefined;
 }
@@ -511,11 +564,11 @@ function resolveDuplicateReason(
  * Derives the stable API id for one channel user.
  *
  * @param type Channel type.
- * @param openid Channel OpenID.
+ * @param userId Channel User ID.
  * @returns API identifier.
  */
-export function deriveChannelUserId(type: ChannelUserType, openid: string): string {
-  return `${type}:${encodeURIComponent(openid)}`;
+export function deriveChannelUserId(type: ChannelUserType, userId: string): string {
+  return `${type}:${encodeURIComponent(userId)}`;
 }
 
 /**
@@ -526,11 +579,11 @@ export function deriveChannelUserId(type: ChannelUserType, openid: string): stri
  */
 function toChannelUserApi(record: Omit<ChannelUser, "id"> | ChannelUser): ChannelUser {
   return {
-    id: deriveChannelUserId(record.channel.type, record.channel.openid),
+    id: deriveChannelUserId(record.channel.type, record.channel.user_id),
     displayName: record.displayName,
     channel: {
       type: record.channel.type,
-      openid: record.channel.openid
+      user_id: record.channel.user_id
     }
   };
 }
@@ -546,7 +599,7 @@ function toChannelUserRecord(user: ChannelUser): Omit<ChannelUser, "id"> {
     displayName: user.displayName,
     channel: {
       type: user.channel.type,
-      openid: user.channel.openid
+      user_id: user.channel.user_id
     }
   };
 }
@@ -562,7 +615,7 @@ function toChannelUserListItem(user: ChannelUser): ChannelUserListItem {
     displayName: user.displayName,
     channel: {
       type: user.channel.type,
-      openid: user.channel.openid
+      user_id: user.channel.user_id
     }
   };
 }
@@ -724,7 +777,7 @@ function readChannelAccount(
  * @param digitalHumanId Target digital human identifier.
  * @param channelKey OpenClaw channel key.
  * @param accountId Normalized account id.
- * @param allowFrom OpenID whitelist to persist.
+ * @param allowFrom User ID whitelist to persist.
  */
 function setDigitalHumanAllowFrom(
   config: Record<string, unknown>,
@@ -781,32 +834,32 @@ function setDigitalHumanAllowFrom(
 }
 
 /**
- * Removes one OpenID from all matching `allowFrom` arrays.
+ * Removes one User ID from all matching `allowFrom` arrays.
  *
  * @param config Parsed config root.
  * @param channelType Channel user type.
- * @param openid Removed OpenID.
+ * @param userId Removed User ID.
  */
 function removeAllowFromValue(
   config: Record<string, unknown>,
   channelType: ChannelUserType,
-  openid: string
+  userId: string
 ): void {
   mutateAccountsForChannel(config, channelType, (account) => {
     if (!Array.isArray(account.allowFrom)) {
       return;
     }
-    account.allowFrom = account.allowFrom.filter((item) => item !== openid);
+    account.allowFrom = account.allowFrom.filter((item) => item !== userId);
   });
 }
 
 /**
- * Replaces one OpenID in `allowFrom` arrays when a channel user changes.
+ * Replaces one User ID in `allowFrom` arrays when a channel user changes.
  *
  * @param config Parsed config root.
  * @param channelType Channel user type.
- * @param from Previous OpenID.
- * @param to Replacement OpenID.
+ * @param from Previous User ID.
+ * @param to Replacement User ID.
  */
 function replaceAllowFromValue(
   config: Record<string, unknown>,
@@ -825,35 +878,35 @@ function replaceAllowFromValue(
 }
 
 /**
- * Removes stale OpenIDs from all channel account whitelists.
+ * Removes stale User IDs from all channel account whitelists.
  *
  * @param config Parsed config root.
- * @param openidsByChannel Valid OpenID sets grouped by channel user type.
+ * @param userIdsByChannel Valid User ID sets grouped by channel user type.
  */
 function pruneAllowFromValues(
   config: Record<string, unknown>,
-  openidsByChannel: Map<ChannelUserType, Set<string>>
+  userIdsByChannel: Map<ChannelUserType, Set<string>>
 ): void {
   mutateAccountsForChannel(config, "feishu", (account) => {
-    pruneAccountAllowFrom(account, openidsByChannel.get("feishu") ?? new Set<string>());
+    pruneAccountAllowFrom(account, userIdsByChannel.get("feishu") ?? new Set<string>());
   });
   mutateAccountsForChannel(config, "dingding", (account) => {
-    pruneAccountAllowFrom(account, openidsByChannel.get("dingding") ?? new Set<string>());
+    pruneAccountAllowFrom(account, userIdsByChannel.get("dingding") ?? new Set<string>());
   });
 }
 
 /**
- * Prunes one account allowFrom list against valid OpenIDs.
+ * Prunes one account allowFrom list against valid User IDs.
  *
  * @param account Mutable account object.
- * @param validOpenids Valid OpenIDs for this channel.
+ * @param validUserIds Valid User IDs for this channel.
  */
-function pruneAccountAllowFrom(account: Record<string, unknown>, validOpenids: Set<string>): void {
+function pruneAccountAllowFrom(account: Record<string, unknown>, validUserIds: Set<string>): void {
   if (!Array.isArray(account.allowFrom) || account.allowFrom.some((item) => item === "*")) {
     return;
   }
   account.allowFrom = account.allowFrom.filter(
-    (item): item is string => typeof item === "string" && validOpenids.has(item)
+    (item): item is string => typeof item === "string" && validUserIds.has(item)
   );
 }
 

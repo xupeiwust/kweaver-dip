@@ -11,11 +11,11 @@ components:
       properties:
         type:
           $ref: '#/components/schemas/ChannelUserType'
-        openid:
+        user_id:
           type: string
       required:
         - type
-        - openid
+        - user_id
 
     ChannelUser:
       type: object

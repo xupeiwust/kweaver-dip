@@ -286,7 +286,7 @@ describe("createDigitalHumanRouter", () => {
           displayName: "Alice",
           channel: {
             type: "feishu",
-            openid: "o-1"
+            user_id: "o-1"
           }
         }
       ],
@@ -316,7 +316,7 @@ describe("createDigitalHumanRouter", () => {
           displayName: "Alice",
           channel: {
             type: "feishu",
-            openid: "o-1"
+            user_id: "o-1"
           }
         }
       ],

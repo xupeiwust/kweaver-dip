@@ -19,10 +19,10 @@
 
 ### 角色定义
 
-|  角色  |  说明  | 
+|  角色  |  说明  |
 |  --  |  --  |
 | 管理员 | - 管理通道用户<br>- 配置数字员工消息范围 |
-| 普通用户 | - 在聊天中 @通道用户 |
+| 普通用户 | - 在聊天中 @通道用户 向指定渠道发送消息 |
 
 ### 通道用户管理
 
@@ -42,20 +42,20 @@
 
 #### 添加通道用户
 
-- 添加通道用户时，需要输入用户的显示名，选择通道类型，并输入对应通道的用户的 OpenID。
+- 添加通道用户时，需要输入用户的显示名，选择通道类型，并输入对应通道的用户的 User ID。
 - 支持的通道类型有：飞书、钉钉。
 - 显示名 + 通道类型的组合为全局唯一，例如：可以同时存在 “Alice + 飞书“ 和 “Alice + 钉钉“，但不可以存在两个 “Alice + 飞书“的组合。
 
 #### 编辑通道用户
 
 - 编辑通道用户时，同样需要检查显示名 + 通道类型的组合是否唯一。
-- 可编辑项包括：显示名、通道类型和 OpenID。
+- 可编辑项包括：显示名、通道类型和 User ID。
 
 ### 删除通道用户
 
 - 删除通道用户时，需要二次确认。
 - 删除通道用户时，必须关联删除已配置在通道消息范围白名单中的通道用户 ID。
-- 删除通道用户后，对于历史消息中的通道用户，显示格式为：`<通道>用户: 显示名#已删除`，例如：飞书用户: Zak#已删除。
+- 删除通道用户后，对于历史消息中的通道用户，显示格式为：`<通道>用户: 显示名#已删除`，例如：飞书用户: Zak#已删除。（PLAN里面提及的用户被删除如何处理）
 
 ### 导出通道用户
 
@@ -72,7 +72,7 @@
   * 错误原因：可能是字段缺失、数据类型错误，或其他原因。
   - 如果是重复记录，则提示重复行 + 重复原因。例如：假设 行1、行 10、行 20 为重复数据，则对行 10、行 20 进行。
   - 重复原因可能是：
-    * openid 重复
+    * user_id 重复
     * 显示名 + 通道类型的组合重复
 
 
@@ -83,22 +83,22 @@
 例如，假设存在以下通道用户：
 
 ```jsonl
-{"displayName":"Alice","channel":{"type":"feishu","openid":"feishu-openid-1"}}
-{"displayName":"Bob","channel":{"type":"feishu","openid":"feishu-openid-2"}}
-{"displayName":"Zak","channel":{"type":"feishu","openid":"feishu-openid-3"}}
+{"displayName":"Alice","channel":{"type":"feishu","user_id":"feishu_user_id_1"}}
+{"displayName":"Bob","channel":{"type":"feishu","user_id":"feishu_user_id_2"}}
+{"displayName":"Zak","channel":{"type":"feishu","user_id":"feishu_user_id_3"}}
 ```
 
 当设定名单为：
 
 ```json
 [
-    "feishu-openid-1", "feishu-openid-3"
+    "feishu_user_id_1", "feishu_user_id_3"
 ]
 ```
 
-此时该数字员工只能向 Alice（"feishu-openid-1"） 和 Zak（"feishu-openid-3"） 发送消息。
+此时该数字员工只能向 Alice（"feishu_user_id_1"） 和 Zak（"feishu_user_id_3"） 发送消息。
 
-#### 发送消息给通道用户
+### 发送消息给通道用户
 
 - 普通用户在和数字员工对话时，可以通过 @ 触发选择通道用户。
 - 通道用户列表记录显示格式为：`<通道类型>用户:<显示名>`，例如 “飞书用户: Zak“。
@@ -107,6 +107,7 @@
   1. 用户输入 @ 时，出现按拼音首字母排序的用户列表。
   2. 用户输入 `@王子` 时，列表中出现显示名包含 `王子` 的用户，按照以下规则排序：
     * 匹配位置靠前优先，例如：`王子秦` 要出现在 `数学王子秦老师` 前。
+    * 多通道匹配时，按通道名称首字母排序
 - 列表始终聚焦第一条通道用户记录，当用户输入空格时，在输入框中生成通道用户内联块。
 - 输入框中的通道用户内联块显示格式为：`<通道类型>用户: <显示名>`，例如 “飞书用户: Zak“。
 - 在已发送的消息和历史消息中，同样使用内联块格式显示通道用户。
@@ -136,9 +137,9 @@ properties:
       type:
         type: string
         enum: ["feishu", "dingding"]
-      openid:
+      user_id:
         type: string
-        description: 通道用户的 OpenID
+        description: 通道用户的 User ID
 ```
 
 - 通道用户文件存放路径为 `~/.openclaw/workspace/channel-users.jsonl`
@@ -146,7 +147,7 @@ properties:
 ### 导入
 
 - JSONL 中的记录必须保证以下字段（组合）全局唯一：
-  * channel.openid
+  * channel.user_id
   * displayName + channel.type
 
 ### 导出
@@ -164,16 +165,17 @@ properties:
 #### 通道与数字员工的绑定关系
 
 ```json
-[
-  {
-    "type": "route",
-    "agentId": "a987374f-afea-4dd1-8ac1-894217306b1b",
-    "match": {
-      "channel": "feishu",
-      "accountId": "cli_a94a1d897cb85cbb"
+{
+  "bindings": [
+    {
+      "agentId": "a987374f-afea-4dd1-8ac1-894217306b1b",
+    	"match": {
+      	"channel": "feishu",
+      	"accountId": "cli_a94a1d897cb85cbb"
+    	}
     }
-  }
-]
+  ]
+}
 ```
 -  数字员工 ID 与 `agentId`相同，可以通过 `agentId` 来匹配数字员工。
 - `match.channel` 和 `match.accountId` 表示该数字员工绑定的通道。
@@ -182,15 +184,17 @@ properties:
 
 ```json
 {
-  "feishu": {
-    "accounts": {
-      "cli_a94a1d897cb85cbb": {
-        "appId": "cli_a94a1d897cb85cbb",
-        "dmPolicy": "open",
-        "allowFrom": [
-          "feishu-openid-1",
-          "feishu-openid-3"
-        ]
+  "channels": {
+    "feishu": {
+      "accounts": {
+        "cli_a94a1d897cb85cbb": {
+          "appId": "cli_a94a1d897cb85cbb",
+          "dmPolicy": "open",
+          "allowFrom": [
+            "feishu_user_id_1",
+            "feishu_user_id_3"
+          ]
+        }
       }
     }
   }
@@ -203,7 +207,7 @@ properties:
 ### 配置数字员工消息投递范围
 
 - 通过 PUT /digital-human/:id/channel-users 接口来更新特定数字员工的消息投递范围。
-- 通过接口将通道用户的 OpenID 列表覆盖 `<channelType>.accounts.<accountId>.allowFrom`。
+- 通过接口将通道用户的 User ID 列表覆盖 `<channelType>.accounts.<accountId>.allowFrom`。
 - 使用 WebSocket RPC 协议中的 `config.patch` 方法局部更新 `<channelType>.accounts.<accountId>.allowFrom` 来设定数字员工的投递范围，该方法只支持覆盖更新。参考：@docs/references/openclaw-websocket-rpc/config.md
 
 ### 获取通道用户列表
@@ -242,7 +246,7 @@ BE ->> SW: 返回列表数据
 
 1. 读取 `openclaw.json`
 2. 从 `bindings` 字段获取数字员工 ID（agentID）和 channel 的关系。
-3. 从 `channels` 字段获取该 channel 可投递消息的通道用户 OpenID 列表。
+3. 从 `channels` 字段获取该 channel 可投递消息的通道用户 User ID 列表。
 
 #### 过滤条件
 
@@ -254,7 +258,7 @@ BE ->> SW: 返回列表数据
 
 ### 投递消息
 
-消息中的内联块，展开为原始数据结构为使用 “{}“ 包含的结构：`{channelMessage:<channelType>:<displayName>:<openid>}`，示例：
+消息中的内联块，展开为原始数据结构为使用 “{}“ 包含的结构：`{channelMessage:<channelType>:<displayName>:<User ID>}`，示例：
 
 当用户向数字员工发送指令：
 
@@ -264,13 +268,36 @@ BE ->> SW: 返回列表数据
 
 指令文本需要被解析：
 
-- [飞书用户: Zak] 为内联块，底层消息结构为：`{channelMessage:feishu:Zak:feishu-openid-3}`
+- [飞书用户: Zak] 为内联块，底层消息结构为：`@{channelMessage:feishu:displayName:Zak:userid:feishu_user_id_3}`
 - 转换成 Agent 收到的原始消息：
     ```text
-    汇总 XX 项目进度，发送项目报告并发送给 {channelMessage:feishu:Zak:feishu-openid-3}
+    汇总 XX 项目进度，发送项目报告并发送给 @{channelMessage:feishu:displayName:Zak:userid:feishu_user_id_3}
     ```
 
 Agent 接收到消息后：
 
 1. 汇总项目进度并生成报告
-2. 通过 OpenClaw 的通道消息机制发送报告给 OpenID 为 `feishu-openid-3` 的飞书（feishu）用户 Zak 
+2. 通过 OpenClaw 的通道消息机制发送报告给 User ID 为 `feishu_user_id_3` 的飞书（feishu）用户 Zak 
+
+
+## 附
+
+### 关于 Open ID 和 User ID 的说明
+
+在飞书中有三种 ID 类型：
+
+- Open ID。应用级 ID，格式为 ou_34ce25bdeb031c3cb68c1764632aaf7b。
+- Union ID。开发商级 ID，格式为 on_5270f68eb0a59d97f3c9f8cd3933de4a
+- User ID。租户级 ID，格式为 6e56d89e
+
+这几种 ID 的主要区别在于生效范围，这里主要是 Open ID 和 User ID 的区别：
+
+- Open ID 与应用（Bot）是 1 : 1 的关系，同一个用户对应不同的应用，Open ID 是不同的。
+- User ID 与应用（Bot）是 1 : N 的关系，同一个用户对应不同的应用，User ID 是相同的。
+
+| 应用 | 被 @用户的 Open ID | 被 @用户的 User ID |
+|  --  |  -- |  -- |
+| 运营助手 | ou_34ce25bdeb031c3cb68c1764632aaf7b | 6e56d89e |
+| 产品专家 | ou_c4eb031c76417b36b68ce25bd32aaf3c | 6e56d89e |
+
+因此，如果要让不同的数字员工能够向同一个用户投递消息，需要使用应用范围最广的 User ID。

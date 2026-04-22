@@ -7,7 +7,9 @@ import {
   parseIdentityMarkdown,
   renderIdentityMarkdown,
   renderSoulMarkdown,
-  resolveSoulTemplatePath
+  renderToolsMarkdown,
+  resolveSoulTemplatePath,
+  resolveToolsTemplatePath
 } from "./digital-human-template";
 
 describe("buildTemplate", () => {
@@ -230,5 +232,16 @@ describe("renderIdentityMarkdown / renderSoulMarkdown", () => {
 
   it("resolveSoulTemplatePath points at de_agent_soul.pug", () => {
     expect(resolveSoulTemplatePath()).toMatch(/de_agent_soul\.pug$/);
+  });
+
+  it("renders tools markdown from TOOLS template", () => {
+    const md = renderToolsMarkdown();
+
+    expect(md).toContain("# TOOLS.md");
+    expect(md).toContain("## 投递通道消息");
+  });
+
+  it("resolveToolsTemplatePath points at TOOLS.md.pug", () => {
+    expect(resolveToolsTemplatePath()).toMatch(/TOOLS\.md\.pug$/);
   });
 });
