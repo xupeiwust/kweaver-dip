@@ -5,63 +5,56 @@
 ### 解析消息中的通道信息
 
 - 如果用户消息内容包含 `@{}` 结构，则表示该消息需要投递到指定 Channel。
-- `@{}` 包含以冒号分隔 Key/Value 以及 Key/Value 对，结构为：`@{channel:<channelType>:displayName:<name>:user_id:<userID>}`：
+- `@{}` 包含以冒号分隔 Key/Value 以及 Key/Value 对，结构为：`@{channel:<channelType>:user:<displayName>:<userId>}`：
   * channel:<channelType>: 投递通道类型，channelType 可选值为："Feishu"、"WeChat"、"DingTalk" 等。
   * displayName:<name>: 指定消息接收者的显示名称。
   * user_id:<userID>: 指定消息接收者在指定通道上的唯一标识符。
 
 ### 投递到飞书（Feishu）
 
-#### 获取飞书 AppId 和 AppSecret
+按以下流程来将消息投递到飞书：
 
-从 `~/.openclaw/openclaw.json` 中获取自己的飞书 AppId 和 AppSecret，`openclaw.json` 中定义了：
+1. 读取自己的 agentId
+2. 读取 `~/.openclaw/openclaw.json`，`openclaw.json` 中定义了：
 
- - Channel 与 Agent 的绑定关系
- - Channel 的配置
+ - Channel 与 Agent 的绑定关系，如下：
 
-Channel 与 Agent 的绑定关系如下：
+  ```json
+  {
+    "bindings": [
+      {
+        "agentId": "a987374f-afea-4dd1-8ac1-894217306b1b",
+        "match": {
+          "channel": "feishu",
+          "accountId": "cli_a94a1d897cb85cbb"
+        }
+      }
+    ]
+  }
+  ```
 
-```json
-{
-  "bindings": [
-    {
-      "agentId": "a987374f-afea-4dd1-8ac1-894217306b1b",
-    	"match": {
-      	"channel": "feishu",
-      	"accountId": "cli_a94a1d897cb85cbb"
-    	}
-    }
-  ]
-}
-```
+ - Channel 的配置，如下：
 
-- 通过 `agentId` 来检索自己的绑定信息，从 `match.channel` 和 `match.accountId` 来获取通道类型和 AppId。
-
-Channel 的配置信息如下：
-
-```json
-{
-  "channels": {
-    "feishu": {
-      "accounts": {
-        "cli_a94a1d897cb85cbb": {
-          "appId": "cli_a4a1d85c997cb8bb",
-          "appSecret": "evikoQMVX9DksYSC4Zwmb0Z5bEw2BynV"
-          "dmPolicy": "open",
-          "allowFrom": [
-            "feishu_user_id_1",
-            "feishu_user_id_3"
-          ]
+  ```json
+  {
+    "channels": {
+      "feishu": {
+        "accounts": {
+          "cli_a94a1d897cb85cbb": {
+            "appId": "cli_a4a1d85c997cb8bb",
+            "appSecret": "evikoQMVX9DksYSC4Zwmb0Z5bEw2BynV"
+          }
         }
       }
     }
   }
-}
-```
+  ```
 
-- 通过 `<channelType>.accounts.<accountId>` 来查找具体的 Channel 配置。
-- 匹配到 Channel 后，`appId` 和 `appSecret` 就是需要设定为飞书技能环境变量的值。
+3. 匹配 `bindings.agentId` 与自己的 agentId，命中匹配的 agentId ↔ Channel 关系，从 `match.channel` 和 `match.accountId` 来获取通道类型和 AppId。
+4. 通过 `channels.<channelType>.accounts.<accountId>` 来查找具体的 Channel 配置。
+5. 匹配到 Channel 配置后，`appId` 和 `appSecret` 就是需要设定为飞书技能环境变量的值。
 
 #### 限制
 
-- 如果在 `openclaw.json` 中无法根据自己的 ID 在 `binding` 关系中匹配到任何 Channel，提示错误。**绝对不要** 使用其他的 `binding` 关系强行投递！
+- 如果在 `openclaw.json` 中无法根据自己的 agentId 在 `binding` 关系中匹配到任何 Channel，提示错误。**绝对不要** 使用其他的 `binding` 关系强行投递！
+- 使用飞书技能发送消息时，总是使用 `user_id` 来指定通道消息的接收者
