@@ -64,6 +64,7 @@ const caretPlaceholder = '\u200b'
 
 type SenderSlotItem = NonNullable<SenderProps['slotConfig']>[number]
 const emptySenderSlotConfig: NonNullable<SenderProps['slotConfig']> = []
+const emptyMentionOptions: AiPromptMentionOption[] = []
 
 type CaretSnapshot =
   | {
@@ -133,7 +134,7 @@ const AiPromptInput: React.FC<AiPromptInputProps> = ({
   onStop,
   onAttach,
   onEmployeeSelect,
-  employeeOptions = [],
+  employeeOptions = emptyMentionOptions,
   placeholder,
   employeeButtonLabel,
   attachButtonTitle,
@@ -249,7 +250,12 @@ const AiPromptInput: React.FC<AiPromptInputProps> = ({
         value: normalizedAssignEmployeeValue,
         label: normalizedAssignEmployeeValue,
       }
-      setEmployees([assignedEmployee])
+      setEmployees((prevEmployees) => {
+        if (prevEmployees.length === 1 && prevEmployees[0]?.value === assignedEmployee.value) {
+          return prevEmployees
+        }
+        return [assignedEmployee]
+      })
       return
     }
 
