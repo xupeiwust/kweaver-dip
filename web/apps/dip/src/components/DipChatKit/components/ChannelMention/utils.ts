@@ -193,6 +193,34 @@ export const replaceChannelMentionsWithDisplayNames = (text: string): string => 
   return nextText
 }
 
+export const replaceChannelMentionsWithLabels = (text: string): string => {
+  if (!text) return text
+
+  let nextText = ''
+  let cursor = 0
+
+  while (cursor < text.length) {
+    const start = text.indexOf(CHANNEL_MENTION_PREFIX, cursor)
+    if (start < 0) {
+      nextText += text.slice(cursor)
+      break
+    }
+
+    const mention = parseChannelMentionAt(text, start)
+    if (!mention) {
+      nextText += text.slice(cursor, start + CHANNEL_MENTION_PREFIX.length)
+      cursor = start + CHANNEL_MENTION_PREFIX.length
+      continue
+    }
+
+    nextText += text.slice(cursor, start)
+    nextText += formatChannelMentionLabel(mention.channelType, mention.displayName)
+    cursor = mention.endIndex
+  }
+
+  return nextText
+}
+
 export const channelMentionMarkedExtension = {
   extensions: [
     {

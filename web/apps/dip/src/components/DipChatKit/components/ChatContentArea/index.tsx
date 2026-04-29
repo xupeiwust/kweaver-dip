@@ -17,6 +17,7 @@ import type { DipChatKitAnswerEvent, DipChatKitPreviewPayload } from '../../type
 import { isAsyncIterable, maskFirstQuestionTurn, normalizeStreamChunk } from '../../utils'
 import AiPromptInput from '../AiPromptInput'
 import type { AiPromptSubmitPayload } from '../AiPromptInput/types'
+import { replaceChannelMentionsWithLabels } from '../ChannelMention/utils'
 import styles from './index.module.less'
 import type { ChatContentAreaProps } from './types'
 import { buildRegeneratePayload, mapSessionMessagesToTurns } from './utils'
@@ -534,7 +535,10 @@ const ChatContentArea: React.FC<ChatContentAreaProps> = ({
 
   const handleCopyQuestion = useCallback(
     (question: string) => {
-      void copyText(question, intl.get('dipChatKit.copySucceeded').d('复制成功') as string)
+      void copyText(
+        replaceChannelMentionsWithLabels(question),
+        intl.get('dipChatKit.copySucceeded').d('复制成功') as string,
+      )
     },
     [copyText],
   )

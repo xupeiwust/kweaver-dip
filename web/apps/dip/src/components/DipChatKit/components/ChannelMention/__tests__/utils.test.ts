@@ -6,6 +6,7 @@ import {
   parseChannelMentionAt,
   renderTextWithChannelMentions,
   replaceChannelMentionsWithDisplayNames,
+  replaceChannelMentionsWithLabels,
 } from '../utils'
 
 describe('parseChannelMentionAt', () => {
@@ -99,6 +100,22 @@ describe('replaceChannelMentionsWithDisplayNames', () => {
 
   it('keeps malformed mentions as plain text', () => {
     expect(replaceChannelMentionsWithDisplayNames('发送给 @{channel:feishu:user:Zak}')).toBe(
+      '发送给 @{channel:feishu:user:Zak}',
+    )
+  })
+})
+
+describe('replaceChannelMentionsWithLabels', () => {
+  it('replaces parsed mentions with rendered labels', () => {
+    expect(
+      replaceChannelMentionsWithLabels(
+        '发送给 @{channel:feishu:user:Zak:66589dee} 和 @{channel:dingding:user:Alice:42}',
+      ),
+    ).toBe('发送给 @飞书用户: Zak 和 @钉钉用户: Alice')
+  })
+
+  it('keeps malformed mentions as plain text', () => {
+    expect(replaceChannelMentionsWithLabels('发送给 @{channel:feishu:user:Zak}')).toBe(
       '发送给 @{channel:feishu:user:Zak}',
     )
   })
