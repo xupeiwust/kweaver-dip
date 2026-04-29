@@ -16,7 +16,6 @@ declare module '*.svg?react' {
  * 注意：此接口通过 TypeScript 接口合并机制扩展全局类型，linter 可能无法识别其使用
  */
 
-// biome-ignore lint/correctness/noUnusedVariables: 接口扩展用于类型合并，实际会被 TypeScript 使用
 interface ImportMetaEnv {
   // 是否跳过登录认证（设置为 'true' 时跳过）
   readonly PUBLIC_SKIP_AUTH?: string
@@ -24,6 +23,4 @@ interface ImportMetaEnv {
   readonly PUBLIC_TOKEN?: string
   // 本地调试时使用的 refresh token（仅开发模式读取）
   readonly PUBLIC_REFRESH_TOKEN?: string
-  // 为 'true' 时数字员工通道相关 UI 可见
-  readonly PUBLIC_CHANNEL_VISIBLE?: string
 }

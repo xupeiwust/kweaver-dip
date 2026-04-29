@@ -4,7 +4,6 @@ import { useState } from 'react'
 import intl from 'react-intl-universal'
 import type { DigitalHuman } from '@/apis'
 import { resolveDigitalHumanIconSrc } from '@/utils/digital-human/resolveDigitalHumanIcon'
-import { isPublicChannelVisible } from '@/utils/publicEnv'
 import AppIcon from '../AppIcon'
 import IconFont from '../IconFont'
 import { cardHeight } from './utils'
@@ -110,12 +109,10 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({ digitalHuman, menuItems, on
           <IconFont type="icon-graph" className="text-base text-black mr-0.5" />
           <span>{intl.get('digitalHuman.card.knowledgeCount', { count: knowledgeCount })}</span>
         </div>
-        {isPublicChannelVisible ? (
-          <div className="flex items-center gap-1">
-            <IconFont type="icon-index-management" className="text-base text-black mr-0.5" />
-            <span>{intl.get('digitalHuman.card.channelCount', { count: channelCount })}</span>
-          </div>
-        ) : null}
+        <div className="flex items-center gap-1">
+          <IconFont type="icon-index-management" className="text-base text-black mr-0.5" />
+          <span>{intl.get('digitalHuman.card.channelCount', { count: channelCount })}</span>
+        </div>
       </div>
     </Card>
   )

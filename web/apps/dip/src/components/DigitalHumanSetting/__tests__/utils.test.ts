@@ -1,8 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
-
-vi.mock('@/utils/publicEnv', () => ({
-  isPublicChannelVisible: true,
-}))
+import { describe, expect, it } from 'vitest'
 
 import { DESettingMenuKey } from '../types'
 import { deSettingMenuKeyOrder, getDeSettingMenuItems } from '../utils'

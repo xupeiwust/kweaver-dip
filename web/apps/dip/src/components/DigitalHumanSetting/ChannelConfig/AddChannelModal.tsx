@@ -21,8 +21,8 @@ const AddChannelModal = ({ open, onOk, onCancel }: AddChannelModalProps) => {
   const [selectedType, setSelectedType] = useState<ChannelType>('feishu')
   const [, messageContextHolder] = message.useMessage()
 
-  /** 左侧可选通道类型（展示名与配置标题走 i18n） */
-  const channelOptions = useMemo(
+  /** 全量通道类型配置；非飞书通道暂不展示，保留配置便于后续恢复。 */
+  const allChannelOptions = useMemo(
     () =>
       [
         {
@@ -39,6 +39,12 @@ const AddChannelModal = ({ open, onOk, onCancel }: AddChannelModalProps) => {
         },
       ] as const,
     [language],
+  )
+
+  /** 左侧可选通道类型（展示名与配置标题走 i18n） */
+  const channelOptions = useMemo(
+    () => allChannelOptions.filter((option) => option.type === 'feishu'),
+    [allChannelOptions],
   )
 
   const selectedOption = useMemo(() => {

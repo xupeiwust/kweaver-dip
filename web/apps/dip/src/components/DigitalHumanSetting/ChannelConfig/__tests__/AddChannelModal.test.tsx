@@ -24,24 +24,18 @@ describe('DigitalHumanSetting/ChannelConfig/AddChannelModal', () => {
     ).toBeInTheDocument()
   })
 
-  it('可以切换选中钉钉', () => {
+  it('暂时只展示飞书通道', () => {
     render(<AddChannelModal open onOk={mockOnOk} onCancel={mockOnCancel} />)
 
-    fireEvent.click(screen.getByText('digitalHuman.channelModal.dingtalkBot'))
-
-    expect(screen.getAllByRole('radio')[1]).toBeChecked()
-    expect(screen.getByText('digitalHuman.channelModal.dingtalkConfigTitle')).toBeInTheDocument()
-    expect(
-      screen.getByPlaceholderText('digitalHuman.channelModal.placeholderDingtalkAppKey'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('digitalHuman.channelModal.feishuBot')).toBeInTheDocument()
+    expect(screen.queryByText('digitalHuman.channelModal.dingtalkBot')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('radio')).toHaveLength(1)
   })
 
   it('点击取消按钮调用 onCancel', () => {
     render(<AddChannelModal open onOk={mockOnOk} onCancel={mockOnCancel} />)
 
-    const buttons = screen.getAllByRole('button')
-    const cancelBtn = buttons[5]
-    fireEvent.click(cancelBtn)
+    fireEvent.click(screen.getByRole('button', { name: 'global.cancel' }))
 
     expect(mockOnCancel).toHaveBeenCalled()
   })
@@ -57,9 +51,7 @@ describe('DigitalHumanSetting/ChannelConfig/AddChannelModal', () => {
     expect(apiKeyInput).toHaveValue('test-id')
     expect(apiSecretInput).toHaveValue('test-secret')
 
-    const buttons = screen.getAllByRole('button')
-    const resetBtn = buttons[4]
-    fireEvent.click(resetBtn)
+    fireEvent.click(screen.getByRole('button', { name: 'digitalHuman.channelModal.reset' }))
 
     await waitFor(() => {
       apiKeyInput = screen.getByLabelText(labelApiKey)
@@ -72,9 +64,7 @@ describe('DigitalHumanSetting/ChannelConfig/AddChannelModal', () => {
   it('表单为空时点击确定不调用 onOk', async () => {
     render(<AddChannelModal open onOk={mockOnOk} onCancel={mockOnCancel} />)
 
-    const buttons = screen.getAllByRole('button')
-    const okBtn = buttons[3]
-    fireEvent.click(okBtn)
+    fireEvent.click(screen.getByRole('button', { name: 'global.ok' }))
 
     await waitFor(() => {
       expect(mockOnOk).not.toHaveBeenCalled()
@@ -89,9 +79,7 @@ describe('DigitalHumanSetting/ChannelConfig/AddChannelModal', () => {
     fireEvent.change(apiKeyInput, { target: { value: 'test-app-id' } })
     fireEvent.change(apiSecretInput, { target: { value: 'test-app-secret' } })
 
-    const buttons = screen.getAllByRole('button')
-    const okBtn = buttons[3]
-    fireEvent.click(okBtn)
+    fireEvent.click(screen.getByRole('button', { name: 'global.ok' }))
 
     await waitFor(() => {
       expect(mockOnOk).toHaveBeenCalledWith({
@@ -103,32 +91,9 @@ describe('DigitalHumanSetting/ChannelConfig/AddChannelModal', () => {
     })
   })
 
-  it('钉钉类型填写完整信息后调用 onOk 传递正确数据', async () => {
-    render(<AddChannelModal open onOk={mockOnOk} onCancel={mockOnCancel} />)
-
-    fireEvent.click(screen.getByText('digitalHuman.channelModal.dingtalkBot'))
-    const apiKeyInput = screen.getByLabelText(labelApiKey)
-    const apiSecretInput = screen.getByLabelText(labelApiSecret)
-    fireEvent.change(apiKeyInput, { target: { value: 'dingtalk-id' } })
-    fireEvent.change(apiSecretInput, { target: { value: 'dingtalk-secret' } })
-
-    const buttons = screen.getAllByRole('button')
-    const okBtn = buttons[3]
-    fireEvent.click(okBtn)
-
-    await waitFor(() => {
-      expect(mockOnOk).toHaveBeenCalledWith({
-        type: 'dingtalk',
-        appId: 'dingtalk-id',
-        appSecret: 'dingtalk-secret',
-      })
-    })
-  })
-
   it('关闭弹窗时重置选中和表单', () => {
     const { rerender } = render(<AddChannelModal open onOk={mockOnOk} onCancel={mockOnCancel} />)
 
-    fireEvent.click(screen.getByText('digitalHuman.channelModal.dingtalkBot'))
     let apiKeyInput = screen.getByLabelText(labelApiKey)
     fireEvent.change(apiKeyInput, { target: { value: 'test-id' } })
 

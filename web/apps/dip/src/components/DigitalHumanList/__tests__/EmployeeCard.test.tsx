@@ -1,10 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/utils/publicEnv', () => ({
-  isPublicChannelVisible: true,
-}))
-
 vi.mock('@/utils/digital-human/resolveDigitalHumanIcon', () => ({
   resolveDigitalHumanIconSrc: (id?: string) => (id ? `/icon/${id}.png` : ''),
 }))

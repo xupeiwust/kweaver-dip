@@ -1,5 +1,4 @@
 import intl from 'react-intl-universal'
-import { isPublicChannelVisible } from '@/utils/publicEnv'
 import { type DESettingMenuItem, DESettingMenuKey } from './types'
 
 /** 侧栏菜单 key 顺序（与原先 `deSettingMenuItems` 一致） */
@@ -18,14 +17,10 @@ const labelKeyByMenuKey: Record<DESettingMenuKey, string> = {
   [DESettingMenuKey.CHANNEL]: 'digitalHuman.setting.menuChannel',
 }
 
-/** 侧栏菜单项（受 `PUBLIC_CHANNEL_VISIBLE` 影响时去掉「通道接入」） */
+/** 侧栏菜单项 */
 export const getDeSettingMenuItems = (): DESettingMenuItem[] => {
-  const items: DESettingMenuItem[] = deSettingMenuKeyOrder.map((key) => ({
+  return deSettingMenuKeyOrder.map((key) => ({
     key,
     label: intl.get(labelKeyByMenuKey[key]),
   }))
-  if (!isPublicChannelVisible) {
-    return items.filter((i) => i.key !== DESettingMenuKey.CHANNEL)
-  }
-  return items
 }
