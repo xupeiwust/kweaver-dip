@@ -1,4 +1,5 @@
 import type React from 'react'
+import type { DipChatKitSessionArchiveEntryType } from './apis/types'
 import type { AiPromptMentionOption, AiPromptSubmitPayload } from './components/AiPromptInput/types'
 
 export interface DipChatKitAttachment {
@@ -18,6 +19,7 @@ export interface DipChatKitPreviewPayload {
     subpath: string
     fileName: string
     archiveRoot?: string
+    entryType?: Extract<DipChatKitSessionArchiveEntryType, 'file' | 'directory'>
   }
 }
 

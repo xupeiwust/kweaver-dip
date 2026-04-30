@@ -11,6 +11,7 @@ const ARCHIVE_GRID_PLACEHOLDER_NAME = '{ORIGIN_NAME}'
 const THINKING_TYPE = 'thinking'
 const THINKING_TYPE_PATTERN = /"type"\s*:\s*"thinking"/gi
 const THINKING_TAG_PATTERN = /<\s*think(?:ing)?\s*>([\s\S]*?)<\s*\/\s*think(?:ing)?\s*>/gi
+const MARKDOWN_CODE_BLOCK_PATTERN = /^```(?:[\w-]+)?\s*\n([\s\S]*?)\n```$/u
 
 export const normalizeMarkdownText = (value: unknown): string => {
   if (isString(value)) return value
@@ -64,6 +65,13 @@ const parseJsonRecord = (value: string): Record<string, unknown> | null => {
   } catch {
     return null
   }
+}
+
+const unwrapMarkdownCodeBlock = (value: string): string => {
+  const trimmed = value.trim()
+  const fencedMatch = MARKDOWN_CODE_BLOCK_PATTERN.exec(trimmed)
+  if (!fencedMatch) return trimmed
+  return fencedMatch[1]?.trim() || ''
 }
 
 const readRecordField = (source: unknown, key: string): Record<string, unknown> | null => {
@@ -134,7 +142,7 @@ export const buildArchiveGridPreviewPayload = (
   const normalizedSessionKey = sessionKey?.trim() || ''
   if (!normalizedSessionKey) return null
 
-  const parsed = parseJsonRecord(code)
+  const parsed = parseJsonRecord(unwrapMarkdownCodeBlock(code))
   if (!parsed || parsed.type !== 'archive_grid') {
     return null
   }
@@ -150,14 +158,21 @@ export const buildArchiveGridPreviewPayload = (
   const normalizedSubpath = normalizeArchiveSubpath(data.subpath, data.archive_root)
   if (!normalizedSubpath) return null
 
+  const rawEntryType = toTextFromUnknown(data.type).trim().toLowerCase()
+  const entryType = rawEntryType === 'directory' ? 'directory' : 'file'
   const fileName = resolveFileNameFromSubpath(normalizedSubpath, data.name)
   if (!fileName) return null
   const archiveRoot = normalizeArchiveRoot(data.archive_root)
 
   return {
-    title: intl
-      .get('dipChatKit.artifactPreviewTitle', { fileName })
-      .d(`文件预览：${fileName}`) as string,
+    title:
+      entryType === 'directory'
+        ? ((intl.get('dipChatKit.artifactDirectoryPreviewTitle', { fileName }).d(
+            `目录预览：${fileName}`,
+          ) as string))
+        : ((intl.get('dipChatKit.artifactPreviewTitle', { fileName }).d(
+            `文件预览：${fileName}`,
+          ) as string)),
     content: normalizedSubpath,
     sourceType: 'artifact',
     artifact: {
@@ -165,8 +180,48 @@ export const buildArchiveGridPreviewPayload = (
       subpath: normalizedSubpath,
       fileName,
       archiveRoot,
+      entryType,
     },
   }
+}
+
+export const getArchivePreviewPayloadKey = (payload: DipChatKitPreviewPayload): string => {
+  const sessionKey = payload.artifact?.sessionKey?.trim() || ''
+  const archiveRoot = payload.artifact?.archiveRoot?.trim() || ''
+  const subpath = payload.artifact?.subpath?.trim() || payload.content.trim()
+  return `${sessionKey}::${archiveRoot}::${subpath}`
+}
+
+export const extractArchiveArtifactsFromEvents = (
+  sessionKey: string | undefined,
+  events: DipChatKitAnswerEvent[],
+): DipChatKitPreviewPayload[] => {
+  const normalizedSessionKey = sessionKey?.trim() || ''
+  if (!normalizedSessionKey) return []
+
+  const payloadsByEventKey = new Map<string, DipChatKitPreviewPayload>()
+
+  events.forEach((event) => {
+    if (event.details?.status === 'in_progress') return
+
+    const payload = buildArchiveGridPreviewPayload(normalizedSessionKey, event.resultText || '')
+    if (!payload?.artifact) return
+
+    const eventKey =
+      event.toolCallId?.trim() || event.id?.trim() || getArchivePreviewPayloadKey(payload)
+    payloadsByEventKey.set(eventKey, payload)
+  })
+
+  const uniquePayloads: DipChatKitPreviewPayload[] = []
+  const renderedPayloadKeySet = new Set<string>()
+  payloadsByEventKey.forEach((payload) => {
+    const payloadKey = getArchivePreviewPayloadKey(payload)
+    if (renderedPayloadKeySet.has(payloadKey)) return
+    renderedPayloadKeySet.add(payloadKey)
+    uniquePayloads.push(payload)
+  })
+
+  return uniquePayloads
 }
 
 export const buildCardPreviewPayload = (

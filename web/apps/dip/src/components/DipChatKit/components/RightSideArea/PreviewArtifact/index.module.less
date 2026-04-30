@@ -24,6 +24,13 @@
   gap: 8px;
 }
 
+.headerTitleGroup {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .fileAvatar {
   background: #d97706;
   color: #fff;
@@ -41,6 +48,29 @@
   font-size: 13px;
   line-height: 20px;
   font-weight: 500;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.breadcrumb {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #667085;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.breadcrumbCurrent {
+  color: #101828;
+  cursor: default;
 }
 
 .headerCenter {
@@ -121,4 +151,92 @@
   min-height: 680px;
   border: none;
   background: #fff;
+}
+
+.directoryWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.directoryLayout {
+  display: grid;
+  grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.directorySidebar {
+  min-width: 0;
+  border-right: 1px solid #eaecf0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.directoryPreviewPane {
+  min-width: 0;
+  min-height: 0;
+}
+
+.directorySidebarSkeleton {
+  padding: 4px 0;
+}
+
+.directoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.directoryItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.directoryItemActive {
+  background: #eff8ff;
+}
+
+.directoryItemName {
+  color: #101828;
+  font-size: 14px;
+  line-height: 20px;
+  word-break: break-all;
+}
+
+.directoryItemType {
+  color: #175cd3;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.emptyText {
+  color: #667085;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.directoryEmptyPreview {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: #667085;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: center;
 }

@@ -205,6 +205,7 @@ describe("archive-command", () => {
   it("formats archive response output with json code fence", () => {
     const payload = formatArchiveResponseOutput({
       kind: "file",
+      entryType: "file",
       archiveId: "chat-1",
       archiveRoot: "archives/chat-1",
       archiveRootWithSlash: "archives/chat-1/",
@@ -218,5 +219,24 @@ describe("archive-command", () => {
     expect(payload).not.toContain("ARCHIVE_STATUS");
     expect(payload).toContain("```json");
     expect(payload).toContain("\"archive_root\"");
+    expect(payload).toContain("\"type\": \"file\"");
+  });
+
+  it("formats directory archive response output with directory entry type", () => {
+    const payload = formatArchiveResponseOutput({
+      kind: "file",
+      entryType: "directory",
+      archiveId: "chat-1",
+      archiveRoot: "archives/chat-1",
+      archiveRootWithSlash: "archives/chat-1/",
+      relativePath: "archives/chat-1/2026-03-25-03-04-05/output",
+      subpath: "2026-03-25-03-04-05/output",
+      displayName: "output",
+      timestamp: "2026-03-25-03-04-05",
+      fileName: "output"
+    });
+
+    expect(payload).toContain("\"type\": \"directory\"");
+    expect(payload).toContain("\"subpath\": \"2026-03-25-03-04-05/output\"");
   });
 });

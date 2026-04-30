@@ -40,6 +40,11 @@ metadata:
 1. **计划文件（PLAN.md 专属）**：工具参数 `{"kind":"plan","sourcePath":"PLAN.md"}`。归档后，如需修改计划，应**直接编辑** `archives/{ARCHIVE_ID}/PLAN.md`。
 2. **普通归档物（单个文件或整个目录）**：工具参数 `{"kind":"file","sourcePath":"result_dir"}`。支持归档单个文件或包含多个文件的目录。
 
+> 卡片协议说明：
+> - 工具入参 `kind` 只决定归档写入规则，仍然只有 `plan` / `file`
+> - WebUI 消费归档卡片时，使用 `archive_grid.data.type` 区分 `file` 和 `directory`
+> - 目录归档仍使用 `kind: "file"`，但成功后返回的卡片会标记 `data.type: "directory"`
+
 ## 【目录归档模式】
 
 当你的输出包含多个文件（如前端项目、代码包、多份分析报告）时，**必须执行以下流程**：

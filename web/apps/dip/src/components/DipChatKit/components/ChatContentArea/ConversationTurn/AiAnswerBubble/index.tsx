@@ -22,9 +22,11 @@ import {
   buildCardPreviewPayload,
   buildMarkdownFilePreviewPayload,
   buildToolCardItems,
+  extractArchiveArtifactsFromEvents,
   extractMarkdownFileNameFromHref,
   extractThinkingContent,
   getDomDataAttributes,
+  getArchivePreviewPayloadKey,
   isMermaidLanguage,
   normalizeLanguage,
   normalizeMarkdownText,
@@ -349,6 +351,12 @@ const AiAnswerBubble: React.FC<AiAnswerBubbleProps> = ({
   const allToolCards = useMemo(() => {
     return buildToolCardItems(turn.answerEvents)
   }, [turn.answerEvents])
+  const eventArtifactCards = useMemo(() => {
+    return extractArchiveArtifactsFromEvents(turn.sessionKey, turn.answerEvents)
+  }, [turn.answerEvents, turn.sessionKey])
+  const eventArtifactCardKeySet = useMemo(() => {
+    return new Set(eventArtifactCards.map(getArchivePreviewPayloadKey))
+  }, [eventArtifactCards])
 
   const answerSegments = useMemo(() => {
     const rawSegments = buildAnswerSegments(
@@ -483,11 +491,15 @@ const AiAnswerBubble: React.FC<AiAnswerBubbleProps> = ({
 
       const artifactPreviewPayload = buildArchiveGridPreviewPayload(turn.sessionKey, codeText)
       if (artifactPreviewPayload?.artifact) {
+        if (eventArtifactCardKeySet.has(getArchivePreviewPayloadKey(artifactPreviewPayload))) {
+          return null
+        }
         return (
           <div className={styles.blockCodeWrap}>
             <ArtifactMessageCard
               fileName={artifactPreviewPayload.artifact.fileName}
               archiveRoot={artifactPreviewPayload.artifact.archiveRoot || ''}
+              entryType={artifactPreviewPayload.artifact.entryType}
               onClick={() => {
                 onOpenPreview(artifactPreviewPayload)
               }}
@@ -560,7 +572,7 @@ const AiAnswerBubble: React.FC<AiAnswerBubbleProps> = ({
       a: LinkRenderer,
       div: DivRenderer,
     }
-  }, [onOpenPreview, turn.answerStreaming, turn.sessionKey])
+  }, [eventArtifactCardKeySet, onOpenPreview, turn.answerStreaming, turn.sessionKey])
 
   const toolCardMarkdownComponents = useMemo(() => {
     const ToolCardLinkRenderer: React.FC<MarkdownComponentProps> = ({
@@ -758,6 +770,27 @@ const AiAnswerBubble: React.FC<AiAnswerBubbleProps> = ({
     )
   }
 
+  const renderArtifactCards = (artifactCards: typeof eventArtifactCards) => {
+    if (artifactCards.length === 0) return null
+
+    return (
+      <div className={styles.chatArtifactsList}>
+        {artifactCards.map((artifactCard) => (
+          <div key={getArchivePreviewPayloadKey(artifactCard)} className={styles.chatArtifactCard}>
+            <ArtifactMessageCard
+              fileName={artifactCard.artifact?.fileName || ''}
+              archiveRoot={artifactCard.artifact?.archiveRoot || ''}
+              entryType={artifactCard.artifact?.entryType}
+              onClick={() => {
+                onOpenPreview(artifactCard)
+              }}
+            />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   const renderStreamingThought = (events?: DipChatKitAnswerEvent[]) => {
     if (!turn.answerStreaming) return null
     const generatingDesc = intl.get('dipChatKit.generatingDesc').d('Please wait...') as string
@@ -907,6 +940,7 @@ const AiAnswerBubble: React.FC<AiAnswerBubbleProps> = ({
                       return renderTextSegment(segment.text, index)
                     })
                   : renderTextSegment(normalizedContent, 0)}
+                {renderArtifactCards(eventArtifactCards)}
                 {turn.answerStreaming && !isCallingTool && renderStreamingThought()}
               </>
             )

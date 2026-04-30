@@ -9,6 +9,7 @@ import { isValidArchiveTimestamp } from "./archives-utils.js";
 
 /** Accepted archive command variants. */
 export type ArchiveCommandKind = "plan" | "file";
+export type ArchiveEntryType = "file" | "directory";
 
 export interface ArchiveCommandOptions {
   kind: ArchiveCommandKind;
@@ -22,6 +23,7 @@ export interface ArchiveCommandOptions {
 
 export interface ArchiveOperationResult {
   kind: ArchiveCommandKind;
+  entryType: ArchiveEntryType;
   /**
    * Primary archive identifier used for the written archive root.
    */
@@ -165,6 +167,7 @@ export async function executeArchiveCommand({
 
   return {
     kind,
+    entryType: isDirectory ? "directory" : "file",
     archiveId: primaryArchiveId,
     archiveRoot: `archives/${primaryArchiveId}`,
     archiveRootWithSlash: `archives/${primaryArchiveId}/`,
@@ -268,7 +271,7 @@ export function formatArchiveResponseOutput(result: ArchiveOperationResult): str
   const card = {
     type: "archive_grid",
     data: {
-      type: "file",
+      type: result.entryType,
       archive_root: result.archiveRoot,
       subpath: result.subpath,
       name: result.displayName,

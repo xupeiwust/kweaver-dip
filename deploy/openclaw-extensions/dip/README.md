@@ -42,6 +42,14 @@
 - 同一次 cron run 的普通产物会镜像到原始计划会话目录 `archives/{ARCHIVE_ID}/{TIMESTAMP}/{ORIGIN_NAME}`
 - cron run 的 `PLAN.md` 仍只保留在 `archives/{ARCHIVE_ID}/PLAN.md`，不会生成 `archives/{runId}/PLAN.md`
 
+`archive_grid` 卡片当前的兼容规则：
+
+- 顶层 `type` 固定为 `archive_grid`
+- 工具入参 `kind` 只负责归档写入语义：`plan` / `file`
+- 卡片里的 `data.type` 负责前端展示语义：`file` / `directory`
+- `kind: "plan"` 仍会输出 `data.type: "file"`，因为前端消费的是一个归档文件
+- `kind: "file"` 且源路径为目录时，会输出 `data.type: "directory"`
+
 示例：
 
 ```json

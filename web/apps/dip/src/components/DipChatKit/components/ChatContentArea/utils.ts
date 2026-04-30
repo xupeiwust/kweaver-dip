@@ -252,6 +252,63 @@ const extractToolCallEventsFromMessage = (
   }, [])
 }
 
+const extractToolResultEventsFromMessage = (
+  message: DipChatKitSessionMessage,
+  index: number,
+): DipChatKitAnswerEvent[] => {
+  const content = message.content
+  if (!Array.isArray(content)) return []
+
+  const timestamp = resolveMessageTimestamp(message)
+  const fallbackToolName = normalizeToolName((message as Record<string, unknown>).toolName)
+
+  return content.reduce<DipChatKitAnswerEvent[]>((events, part, partIndex) => {
+    if (!part || typeof part !== 'object' || Array.isArray(part)) return events
+    const payload = part as Record<string, unknown>
+    const type = normalizeSessionContentPartType(payload.type)
+    if (
+      type !== 'function_call_output' &&
+      type !== 'function_call_result' &&
+      type !== 'toolresult' &&
+      type !== 'tool_result'
+    ) {
+      return events
+    }
+
+    const toolName = normalizeToolName(payload.name ?? payload.toolName) || fallbackToolName
+    const toolCallId = normalizeToolCallId(
+      payload.call_id ?? payload.callId ?? payload.id ?? payload.toolCallId,
+    )
+    const resultText = (
+      extractSessionContent(payload.output).text ||
+      extractSessionContent(payload.result).text ||
+      extractSessionContent(payload.content).text ||
+      extractSessionContent(payload.value).text ||
+      extractSessionContent(payload.text).text
+    ).trim()
+
+    if (!(resultText || toolName || toolCallId)) {
+      return events
+    }
+
+    events.push({
+      id: `session_event_tool_result_${index}_${partIndex}`,
+      type: 'toolResult',
+      role: 'toolResult',
+      toolName,
+      toolCallId,
+      text: '',
+      resultText,
+      timestamp,
+      details: {
+        status: 'completed',
+      },
+    })
+
+    return events
+  }, [])
+}
+
 const createSessionEvent = (
   message: DipChatKitSessionMessage,
   index: number,
@@ -275,7 +332,8 @@ const createSessionEvent = (
       id: `session_event_tool_result_${index}`,
       type: 'toolResult',
       role,
-      text,
+      text: '',
+      resultText: text,
       toolName,
       toolCallId,
       isError,
@@ -376,6 +434,8 @@ const appendTurnAnswerEvent = (
           existedEvent.type === 'toolResult' || event.type === 'toolResult'
             ? 'toolResult'
             : 'assistant',
+        toolName: event.toolName?.trim() ? event.toolName : existedEvent.toolName,
+        toolCallId: event.toolCallId?.trim() ? event.toolCallId : existedEvent.toolCallId,
         text: shouldUseResultText ? event.text : existedEvent.text || event.text,
         resultText: event.resultText !== undefined ? event.resultText : existedEvent.resultText,
         details: {
@@ -468,6 +528,17 @@ export const mapSessionMessagesToTurns = (
             resolvedTurn,
             toolEvent,
             `session_timeline_event_tool_call_${index}_${toolIndex}`,
+          )
+        })
+      }
+
+      const toolResultEvents = extractToolResultEventsFromMessage(message, index)
+      if (toolResultEvents.length > 0) {
+        toolResultEvents.forEach((toolEvent, toolIndex) => {
+          appendTurnAnswerEvent(
+            resolvedTurn,
+            toolEvent,
+            `session_timeline_event_tool_result_${index}_${toolIndex}`,
           )
         })
       }
