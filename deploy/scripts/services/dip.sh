@@ -122,7 +122,16 @@ _dip_ensure_kweaver_core() {
 
     for release_name in "${isf_release_names[@]}"; do
         if _dip_helm_release_exists "${release_name}" "${namespace}"; then
-            log_info "  ✓ ISF release already installed (${release_name})"
+            local _chart_name _required_ver _installed_ver
+            _chart_name="$(resolve_release_chart_name "${isf_dependency_manifest}" "isf" "${isf_dependency_version}" "${release_name}")"
+            _required_ver="$(resolve_release_chart_version "${isf_dependency_manifest}" "isf" "${isf_dependency_version}" "${release_name}")"
+            _installed_ver="$(get_installed_chart_version "${release_name}" "${namespace}" "${_chart_name}")"
+            if [[ -n "${_required_ver}" && -n "${_installed_ver}" && "${_installed_ver}" != "${_required_ver}" ]]; then
+                log_info "  ⚠ ISF release needs upgrade: ${release_name} (${_installed_ver} -> ${_required_ver})"
+                missing_isf=true
+            else
+                log_info "  ✓ ISF release already installed (${release_name})"
+            fi
         else
             log_info "  ✗ ISF release not installed (${release_name})"
             missing_isf=true
@@ -131,7 +140,16 @@ _dip_ensure_kweaver_core() {
 
     for release_name in "${core_release_names[@]}"; do
         if _dip_helm_release_exists "${release_name}" "${namespace}"; then
-            log_info "  ✓ Core release already installed (${release_name})"
+            local _chart_name _required_ver _installed_ver
+            _chart_name="$(resolve_release_chart_name "${core_dependency_manifest}" "kweaver-core" "${core_dependency_version}" "${release_name}")"
+            _required_ver="$(resolve_release_chart_version "${core_dependency_manifest}" "kweaver-core" "${core_dependency_version}" "${release_name}")"
+            _installed_ver="$(get_installed_chart_version "${release_name}" "${namespace}" "${_chart_name}")"
+            if [[ -n "${_required_ver}" && -n "${_installed_ver}" && "${_installed_ver}" != "${_required_ver}" ]]; then
+                log_info "  ⚠ Core release needs upgrade: ${release_name} (${_installed_ver} -> ${_required_ver})"
+                missing_core=true
+            else
+                log_info "  ✓ Core release already installed (${release_name})"
+            fi
         else
             log_info "  ✗ Core release not installed (${release_name})"
             missing_core=true

@@ -1,17 +1,17 @@
 apiVersion: deploy.kweaver.ai/v1alpha1
 kind: VersionSet
 product: kweaver-dip
-version: 0.5.0
+version: 0.6.0
 source:
   helmRepoName: kweaver
   helmRepoUrl: https://kweaver-ai.github.io/helm-repo/
 dependencies:
 - product: isf
-  version: 0.6.0
-  manifest: ../0.6.0/isf.yaml
+  version: 0.7.0
+  manifest: ../0.7.0/isf.yaml
 - product: kweaver-core
-  version: 0.6.0
-  manifest: ../0.6.0/kweaver-core.yaml
+  version: 0.7.0
+  manifest: ../0.7.0/kweaver-core.yaml
 releases:
   dip-data-migrator:
     chart: dip-data-migrator
@@ -43,7 +43,7 @@ releases:
     version: 0.5.1-main.git-671eead
   workflow:
     chart: workflow
-    version: 0.3.0-main.git-git+37cf114.1795485
+    version: 0.3.1-main.git-git+37cf114.1795485
   workflow-manage-client:
     chart: workflow-manage-client
     version: 0.6.0-main.git-0ebc9e1
@@ -82,7 +82,7 @@ releases:
     version: 0.4.0-main.20260403.1
   data-semantic:
     chart: data-semantic
-    version: 0.4.0-main.20260414.1
+    version: 0.4.1-main.20260414.1
   data-subject:
     chart: data-subject
     version: 0.4.0-main.20260414.1
@@ -97,7 +97,7 @@ releases:
     version: 0.4.0-main.20260420.2
   sailor-service:
     chart: sailor-service
-    version: 0.4.0-main.20260417.1
+    version: 0.4.1-main.20260417.1
   session:
     chart: session
     version: 0.4.0-main.20260403.2

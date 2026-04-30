@@ -68,7 +68,7 @@ cd kweaver-dip/deploy
 
 # 2. Install KWeaver DIP
 # a) For stability, we recommend installing the latest released version:
-bash ./deploy.sh kweaver-dip install --version=0.5.0
+bash ./deploy.sh kweaver-dip install --version=0.6.0
 
 # b) To try the latest features, you can also install the main branch:
 bash ./deploy.sh kweaver-dip install

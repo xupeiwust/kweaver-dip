@@ -67,7 +67,7 @@ cd kweaver-dip/deploy
 
 # 2. 安装 KWeaver DIP
 a、确保稳定，推荐安装最新的发布版本：
-bash ./deploy.sh kweaver-dip install --version=0.5.0
+bash ./deploy.sh kweaver-dip install --version=0.6.0
 
 5、体验最新的功能，也可以安装主线版本：
 bash ./deploy.sh kweaver-dip install
