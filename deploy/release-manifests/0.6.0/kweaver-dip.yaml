@@ -46,13 +46,13 @@ releases:
     version: 0.3.0-main.git-git+37cf114.1795485
   workflow-manage-client:
     chart: workflow-manage-client
-    version: 0.5.0-main.git-84bea21
+    version: 0.6.0-main.git-0ebc9e1
   workflow-manage-front:
     chart: workflow-manage-front
     version: 0.5.0-main.git-84bea21
   anyfabric-frontend:
     chart: anyfabric-frontend
-    version: 0.5.0-main.20260417.2
+    version: 0.6.0-main.20260430.2
   dip-frontend:
     chart: dip-frontend
     version: 0.5.0-main.5ba829f
