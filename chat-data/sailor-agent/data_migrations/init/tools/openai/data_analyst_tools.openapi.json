@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "servers": [
     {
-      "url": "http://af-sailor-agent",
+      "url": "http://sailor-agent:9595",
       "description": "服务器地址"
     }
   ],
@@ -545,7 +545,7 @@
         }
       }
     },
-    "/api/af-sailor-agent/v1/assistant/tools/todo_list_tool": {
+    "/api/af-sailor-agent/v1/assistant/tools/todo_list": {
       "post": {
         "tags": [
           "other_category"
