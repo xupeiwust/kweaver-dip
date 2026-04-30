@@ -52,6 +52,12 @@ install_dip_plugin() {
   openclaw plugins install /app/extensions/dip
 }
 
+install_feishu_openclaw_skills() {
+  echo "installing openclaw-lark from /app/extensions/larksuite-openclaw-lark-2026.3.24.tgz"
+  openclaw plugins install /app/extensions/larksuite-openclaw-lark-2026.3.24.tgz
+}
+
 ensure_openclaw_config_exists
 install_dip_plugin || echo "dip plugin installation failed; continuing init flow"
+install_feishu_openclaw_skills || echo "openclaw-lark installation failed; continuing init flow"
 node /app/scripts/init_agents/index.mjs
