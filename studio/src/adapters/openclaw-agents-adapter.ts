@@ -16,6 +16,8 @@ import type {
   OpenClawConfigGetResult,
   OpenClawConfigPatchParams,
   OpenClawConfigPatchResult,
+  OpenClawConfigSetParams,
+  OpenClawConfigSetResult,
   OpenClawGatewayPort,
   OpenClawRequestFrame,
   OpenClawSkillStatusEntry,
@@ -98,6 +100,14 @@ export interface OpenClawAgentsAdapter {
    * @returns The patch result.
    */
   patchConfig(params: OpenClawConfigPatchParams): Promise<OpenClawConfigPatchResult>;
+
+  /**
+   * Writes the complete OpenClaw configuration.
+   *
+   * @param params The full config payload and base hash for optimistic locking.
+   * @returns The config write result.
+   */
+  setConfig(params: OpenClawConfigSetParams): Promise<OpenClawConfigSetResult>;
 }
 
 /**
@@ -239,6 +249,22 @@ export function createConfigPatchRequest(
 }
 
 /**
+ * Creates the OpenClaw `config.set` request.
+ *
+ * @param params The full config write parameters.
+ * @returns A serialized OpenClaw request frame.
+ */
+export function createConfigSetRequest(
+  params: OpenClawConfigSetParams
+): OpenClawRequestFrame {
+  return {
+    type: "req",
+    method: "config.set",
+    params
+  };
+}
+
+/**
  * Adapter that translates agent operations to OpenClaw Gateway JSON RPC.
  */
 export class OpenClawAgentsGatewayAdapter implements OpenClawAgentsAdapter {
@@ -371,6 +397,20 @@ export class OpenClawAgentsGatewayAdapter implements OpenClawAgentsAdapter {
   ): Promise<OpenClawConfigPatchResult> {
     return this.gatewayPort.invoke<OpenClawConfigPatchResult>(
       createConfigPatchRequest(params)
+    );
+  }
+
+  /**
+   * Invokes `config.set` over the gateway RPC port.
+   *
+   * @param params The full config payload and base hash.
+   * @returns The config write result.
+   */
+  public async setConfig(
+    params: OpenClawConfigSetParams
+  ): Promise<OpenClawConfigSetResult> {
+    return this.gatewayPort.invoke<OpenClawConfigSetResult>(
+      createConfigSetRequest(params)
     );
   }
 }

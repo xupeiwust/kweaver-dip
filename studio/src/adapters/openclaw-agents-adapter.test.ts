@@ -9,6 +9,7 @@ import {
   createAgentsFilesSetRequest,
   createConfigGetRequest,
   createConfigPatchRequest,
+  createConfigSetRequest,
   createSkillsStatusRequest,
   normalizeSkillStatusEntries,
   OpenClawAgentsGatewayAdapter,
@@ -307,6 +308,22 @@ describe("OpenClawAgentsGatewayAdapter", () => {
 
     expect(gatewayPort.invoke).toHaveBeenCalledWith(
       createConfigPatchRequest({
+        raw: "{}",
+        baseHash: "h"
+      })
+    );
+  });
+
+  it("delegates config.set to the gateway port", async () => {
+    const gatewayPort = {
+      invoke: vi.fn().mockResolvedValue({ ok: true })
+    };
+    const adapter = new OpenClawAgentsGatewayAdapter(gatewayPort);
+
+    await adapter.setConfig({ raw: "{}", baseHash: "h" });
+
+    expect(gatewayPort.invoke).toHaveBeenCalledWith(
+      createConfigSetRequest({
         raw: "{}",
         baseHash: "h"
       })

@@ -159,3 +159,91 @@ BE ->> BE: 3. 返回 204 No Content
 提供 HTTP 接口删除数字员工。
 - endpoint: DELETE /dip-studio/v1/digital-human/:id
 - query: `deleteFiles`（可选，默认按后端逻辑处理）
+
+
+### 绑定 Channel 和 数字员工
+创建、编辑数字员工时，如果修改了 Channel，需要重新绑定 Agent ↔ Channel 关系。为避免 OpenClaw 网关自动重启，需要遵循以下流程：
+
+1. 调 "config.get" 拿当前配置（从 parsed 取对象）和 hash。
+2. 在返回的 "config.bindings" 里追加一条 binding。
+3. 转回 raw JSON
+4. 用 "config.set" 写回完整配置，并带上 baseHash。
+5. 示例绑定 Telegram ops account 到 work agent：
+
+```json
+{
+  "type": "req",
+  "id": "2",
+  "method": "config.get",
+  "params": {}
+}
+```
+
+拿到：
+
+```json
+{
+  "ok": true,
+  "payload": {
+    "hash": "...",
+    "config": {}
+  }
+}
+```
+
+写回时：
+
+```json
+{
+  "type": "req",
+  "id": "3",
+  "method": "config.set",
+  "params": {
+    "baseHash": "<config.get 返回的 hash>",
+    "raw": "{\"bindings\":[{\"type\":\"route\",\"agentId\":\"work\",\"match\":{\"channel\":\"telegram\",\"accountId\":\"ops\"}}]}",
+    "parsed": {
+      bindings: {
+        ...
+      }
+    }
+  }
+}
+```
+
+实际代码里 binding 结构是：
+
+```typescript
+{
+  type?: "route";
+  agentId: string;
+  match: {
+    channel: string;
+    accountId?: string;
+    peer?: { kind: "direct" | "group" | "channel"; id: string };
+    guildId?: string;
+    teamId?: string;
+    roles?: string[];
+  };
+}
+```
+
+几个常见写法：
+
+```json
+{ "type": "route", "agentId": "work", "match": { "channel": "telegram", "accountId": "ops" } }
+```
+
+```json
+{ "type": "route", "agentId": "work", "match": { "channel": "discord", "accountId": "*" } }
+```
+
+```json
+{ "type": "route", "agentId": "opus", "match": { "channel": "whatsapp", "peer": { "kind": "direct", "id": "+15551234567" } } }
+```
+
+是否会重启网关：
+
+- config.patch 和 config.apply 会主动调用 scheduleGatewaySigusr1Restart，所以会安排网关重启。
+- config.set 只写配置，不主动调重启。
+- OpenClaw 的配置热重载规则里 bindings 是 kind: "none"，不会要求 restart，也不会触发 channel restart。
+- 所以要避免重启：用 config.get + config.set 写完整配置，不用 config.patch / config.apply。绑定类变更会在后续路由读取配置时生效，不需要重启 channel 连接。

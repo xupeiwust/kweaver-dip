@@ -354,11 +354,36 @@ export interface OpenClawConfigPatchParams {
 }
 
 /**
+ * Parameters for the `config.set` OpenClaw RPC method.
+ */
+export interface OpenClawConfigSetParams {
+  /**
+   * Serialized JSON full config to write.
+   */
+  raw: string;
+
+  /**
+   * Base hash from a prior `config.get` for optimistic locking.
+   */
+  baseHash: string;
+}
+
+/**
  * Matches the `config.patch` result schema from OpenClaw.
  */
 export interface OpenClawConfigPatchResult {
   /**
    * Indicates whether the patch succeeded.
+   */
+  ok: boolean;
+}
+
+/**
+ * Matches the `config.set` result schema from OpenClaw.
+ */
+export interface OpenClawConfigSetResult {
+  /**
+   * Indicates whether the config write succeeded.
    */
   ok: boolean;
 }

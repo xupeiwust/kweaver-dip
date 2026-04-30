@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -201,8 +201,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
    * 2. Create the agent in OpenClaw (`agents.create`)
    * 3. Update IDENTITY.md and SOUL.md via `agents.files.list` then `agents.files.set`
    * 4. Configure skills via {@link AgentSkillsLogic.updateAgentSkills}
-   * 5. (optional) Bind channel via `config.patch` WS RPC, or fall back to writing
-   *    `openclaw.json` when the gateway rejects the patch (one agent ↔ one binding row).
+   * 5. (optional) Bind channel via `config.get` + `config.set` WS RPCs.
    *
    * @param request The creation request payload.
    * @returns The created digital human summary.
@@ -394,8 +393,9 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
    * `match.accountId` so multiple apps can coexist; each account may only be bound to one
    * agent (other agents' claims on that account are removed). For Feishu, each account
    * also sets `dmPolicy: "open"` and `allowFrom: ["*"]` so DMs reach the agent without
-   * OpenClaw pairing (`openclaw pairing approve`). Tries `config.patch` first; falls back
-   * to writing `openclaw.json` if the gateway rejects the patch.
+   * OpenClaw pairing (`openclaw pairing approve`). Persists the complete merged config
+   * through `config.set` instead of patching, because `config.patch` schedules a gateway
+   * restart while route bindings can be updated without restarting channels.
    *
    * @param agentId The OpenClaw agent id.
    * @param channel The channel configuration.
@@ -406,46 +406,16 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
     channel: ChannelConfig,
     rejectExistingAppId: boolean
   ): Promise<void> {
-    const configPath = resolveOpenClawConfigPath();
-
-    try {
-      const configSnapshot = await this.openClawAgentsAdapter.getConfig();
-      const merged = await loadOpenClawConfigForMerge(configPath, configSnapshot);
-      if (rejectExistingAppId) {
-        assertChannelAppIdIsAvailable(merged, agentId, channel);
-      }
-      applyAgentChannelBinding(merged, agentId, channel);
-      const channelKey = resolveOpenClawChannelKey(channel);
-      const channelPayload = getChannelPatchPayload(merged, channelKey);
-      const patchObject: Record<string, unknown> = {
-        channels: {
-          [channelKey]: channelPayload
-        },
-        bindings: merged.bindings ?? []
-      };
-      await this.openClawAgentsAdapter.patchConfig({
-        raw: JSON.stringify(patchObject),
-        baseHash: configSnapshot.hash
-      });
-    } catch (err) {
-      if (err instanceof HttpError) {
-        throw err;
-      }
-      console.warn(
-        "[digital-human] config.patch failed; writing openclaw.json directly:",
-        err
-      );
-      const merged = await loadOpenClawConfigForMerge(configPath);
-      if (rejectExistingAppId) {
-        assertChannelAppIdIsAvailable(merged, agentId, channel);
-      }
-      applyAgentChannelBinding(merged, agentId, channel);
-      await writeFile(
-        configPath,
-        JSON.stringify(merged, null, 2) + "\n",
-        "utf-8"
-      );
+    const configSnapshot = await this.openClawAgentsAdapter.getConfig();
+    const merged = loadOpenClawConfigSnapshotForMerge(configSnapshot);
+    if (rejectExistingAppId) {
+      assertChannelAppIdIsAvailable(merged, agentId, channel);
     }
+    applyAgentChannelBinding(merged, agentId, channel);
+    await this.openClawAgentsAdapter.setConfig({
+      raw: JSON.stringify(merged),
+      baseHash: configSnapshot.hash
+    });
   }
 
   /**
@@ -538,54 +508,36 @@ function normalizeChannelForResponse(channel: ChannelConfig): ChannelConfig {
 }
 
 /**
- * Loads the local OpenClaw JSON object for merging (unredacted), or `{}` if missing.
+ * Loads the parsed OpenClaw config object from the `config.get` response.
  *
- * @param configPath Absolute path to `openclaw.json`.
+ * @param snapshot The `config.get` result.
+ * @throws HttpError when the gateway does not provide a parsed config object.
  */
-async function loadOpenClawConfigForMerge(
-  configPath: string,
-  snapshot?: OpenClawConfigGetResult
-): Promise<Record<string, unknown>> {
-  const fromSnapshot = parseOpenClawConfigSnapshot(snapshot);
+function loadOpenClawConfigSnapshotForMerge(
+  snapshot: OpenClawConfigGetResult
+): Record<string, unknown> {
+  const fromSnapshot = readOpenClawParsedConfigSnapshot(snapshot);
   if (fromSnapshot !== undefined) {
     return fromSnapshot;
   }
 
-  try {
-    const raw = await readFile(configPath, "utf-8");
-    return JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
+  throw new HttpError(
+    502,
+    "OpenClaw config.get did not return a parsed config object; refusing to call config.set"
+  );
 }
 
 /**
- * Extracts an object config from the `config.get` response. Newer gateways return a
- * parsed `config` object, while older test doubles and gateways may only expose `raw`.
+ * Extracts the parsed config object from `config.get.config`.
  *
- * @param snapshot The optional `config.get` result.
- * @returns Parsed config object when available.
+ * @param snapshot The `config.get` result.
+ * @returns Parsed config object when available and object-shaped.
  */
-function parseOpenClawConfigSnapshot(
-  snapshot?: OpenClawConfigGetResult
+function readOpenClawParsedConfigSnapshot(
+  snapshot: OpenClawConfigGetResult
 ): Record<string, unknown> | undefined {
-  if (snapshot === undefined) {
-    return undefined;
-  }
-
   if (typeof snapshot.config === "object" && snapshot.config !== null) {
     return snapshot.config as Record<string, unknown>;
-  }
-
-  if (typeof snapshot.raw === "string" && snapshot.raw.trim().length > 0) {
-    try {
-      const parsed = JSON.parse(snapshot.raw) as unknown;
-      if (typeof parsed === "object" && parsed !== null) {
-        return parsed as Record<string, unknown>;
-      }
-    } catch {
-      return undefined;
-    }
   }
 
   return undefined;
@@ -835,20 +787,6 @@ function applyAgentChannelBinding(
       accounts: prevAccounts
     }
   };
-}
-
-function getChannelPatchPayload(
-  merged: Record<string, unknown>,
-  channelKey: "feishu" | "dingtalk"
-): unknown {
-  const ch = merged.channels;
-  if (typeof ch === "object" && ch !== null) {
-    const block = (ch as Record<string, unknown>)[channelKey];
-    if (block !== undefined) {
-      return block;
-    }
-  }
-  return {};
 }
 
 /**
