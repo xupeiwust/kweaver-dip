@@ -50,6 +50,8 @@ export interface BuiltInDigitalHuman {
   description?: string
   /** 头像：可为 data URL、预置 dh_1…dh_8、或裸 base64 */
   icon_id?: string
+  /** 当前是否已存在同 ID 的数字员工 */
+  created?: boolean
 }
 
 export type BuiltInDigitalHumanList = BuiltInDigitalHuman[]

@@ -1,5 +1,5 @@
 import { Button, Checkbox, message, Spin } from 'antd'
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import intl from 'react-intl-universal'
 import {
   type BuiltInDigitalHuman,
@@ -19,10 +19,10 @@ const SelectPresetDigitalHumanStep = ({
   onSkip,
   onConfirmSuccess,
 }: SelectPresetDigitalHumanStepProps) => {
-  const [selected, setSelected] = useState(true)
   const [listLoading, setListLoading] = useState(true)
   const [listError, setListError] = useState<string | null>(null)
   const [templates, setTemplates] = useState<BuiltInDigitalHuman[]>([])
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
@@ -33,10 +33,13 @@ const SelectPresetDigitalHumanStep = ({
       try {
         const data = await getBuiltInDigitalHumanList()
         if (cancelled) return
-        setTemplates(Array.isArray(data) ? data : [])
+        const nextTemplates = Array.isArray(data) ? data : []
+        setTemplates(nextTemplates)
+        setSelectedIds(nextTemplates.filter((item) => !item.created).map((item) => item.id))
       } catch (error: any) {
         if (cancelled) return
         setTemplates([])
+        setSelectedIds([])
         setListError(
           error?.description || intl.get('initialConfiguration.selectPreset.listLoadFailed'),
         )
@@ -50,20 +53,28 @@ const SelectPresetDigitalHumanStep = ({
     }
   }, [])
 
-  const first = templates[0]
-  const avatarSrc = useMemo(
-    () => resolveDigitalHumanIconSrc(first?.icon_id, defaultDigitalHumanAvatar),
-    [first?.icon_id],
-  )
-
-  const canSubmit = selected && Boolean(first) && !listLoading && listError === null
+  const installableTemplates = templates.filter((item) => !item.created)
+  const canSubmit =
+    selectedIds.length > 0 &&
+    installableTemplates.length > 0 &&
+    !listLoading &&
+    listError === null
   const primaryDisabled = !canSubmit
 
+  const toggleSelected = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      if (checked) {
+        return prev.includes(id) ? prev : [...prev, id]
+      }
+      return prev.filter((item) => item !== id)
+    })
+  }
+
   const handleConfirm = async () => {
-    if (!first || primaryDisabled) return
+    if (primaryDisabled) return
     setCreating(true)
     try {
-      await createBuiltInDigitalHuman(first.id)
+      await createBuiltInDigitalHuman(selectedIds.join(','))
       onConfirmSuccess()
     } catch (e: unknown) {
       const desc = e && typeof e === 'object' && 'description' in e ? String(e.description) : ''
@@ -93,28 +104,51 @@ const SelectPresetDigitalHumanStep = ({
             desc={listError}
             type="failed"
           />
-        ) : !first ? (
+        ) : templates.length === 0 ? (
           <Empty title={intl.get('initialConfiguration.selectPreset.emptyTitle')} />
         ) : (
-          <div className="self-center">
-            <button
-              type="button"
-              className="flex flex-col items-center justify-center mt-4 w-[264px] bg-black/[0.02] rounded-md px-5 py-4 text-left relative hover:bg-black/[0.03] transition-colors"
-              onClick={() => setSelected((v) => !v)}
-            >
-              <div className="absolute top-3 right-3">
-                <Checkbox checked={selected} onChange={(e) => setSelected(e.target.checked)} />
-              </div>
+          <div className="self-center flex flex-wrap justify-center gap-4">
+            {templates.map((template) => {
+              const checked = selectedIds.includes(template.id)
+              const avatarSrc = resolveDigitalHumanIconSrc(
+                template.icon_id,
+                defaultDigitalHumanAvatar,
+              )
 
-              <div className="w-[64px] h-[64px] rounded-full overflow-hidden flex items-center justify-center">
-                <img src={avatarSrc} alt={first.name} className="w-full h-full object-cover" />
-              </div>
+              return (
+                <button
+                  key={template.id}
+                  type="button"
+                  className="flex flex-col items-center justify-center mt-4 w-[264px] bg-black/[0.02] rounded-md px-5 py-4 text-left relative hover:bg-black/[0.03] transition-colors disabled:cursor-not-allowed disabled:hover:bg-black/[0.02]"
+                  onClick={() => !template.created && toggleSelected(template.id, !checked)}
+                  disabled={template.created}
+                >
+                  <div className="absolute top-3 right-3">
+                    {template.created ? (
+                      <span className="text-xs text-black/45">
+                        {intl.get('initialConfiguration.selectPreset.installed')}
+                      </span>
+                    ) : (
+                      <Checkbox
+                        checked={checked}
+                        onChange={(e) => toggleSelected(template.id, e.target.checked)}
+                      />
+                    )}
+                  </div>
 
-              <div className="text-base font-medium text-[--dip-text-color] mt-1">{first.name}</div>
-              <div className="mt-2 text-black/65 leading-6 text-center">
-                {first.description?.trim()}
-              </div>
-            </button>
+                  <div className="w-[64px] h-[64px] rounded-full overflow-hidden flex items-center justify-center">
+                    <img src={avatarSrc} alt={template.name} className="w-full h-full object-cover" />
+                  </div>
+
+                  <div className="text-base font-medium text-[--dip-text-color] mt-1">
+                    {template.name}
+                  </div>
+                  <div className="mt-2 text-black/65 leading-6 text-center">
+                    {template.description?.trim()}
+                  </div>
+                </button>
+              )
+            })}
           </div>
         )}
       </div>

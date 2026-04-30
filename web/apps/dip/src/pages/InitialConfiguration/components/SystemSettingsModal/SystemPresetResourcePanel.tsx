@@ -1,11 +1,10 @@
 import { Button, message, Spin } from 'antd'
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import intl from 'react-intl-universal'
 import {
   type BuiltInDigitalHuman,
   createBuiltInDigitalHuman,
   getBuiltInDigitalHumanList,
-  getDigitalHumanList,
 } from '@/apis/dip-studio/digital-human'
 import defaultDigitalHumanAvatar from '@/assets/images/bkn-creator.png'
 import Empty from '@/components/Empty'
@@ -19,8 +18,7 @@ const SystemPresetResourcePanel = ({ onConfirmSuccess }: SystemPresetResourcePan
   const [listLoading, setListLoading] = useState(true)
   const [listError, setListError] = useState<string | null>(null)
   const [templates, setTemplates] = useState<BuiltInDigitalHuman[]>([])
-  const [presetExists, setPresetExists] = useState(false)
-  const [creating, setCreating] = useState(false)
+  const [creatingIds, setCreatingIds] = useState<string[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -28,30 +26,13 @@ const SystemPresetResourcePanel = ({ onConfirmSuccess }: SystemPresetResourcePan
       setListLoading(true)
       setListError(null)
       try {
-        const [builtInList, digitalHumanList] = await Promise.all([
-          getBuiltInDigitalHumanList(),
-          getDigitalHumanList(),
-        ])
+        const builtInList = await getBuiltInDigitalHumanList()
         if (cancelled) return
         const nextTemplates = Array.isArray(builtInList) ? builtInList : []
         setTemplates(nextTemplates)
-
-        const firstTemplate = nextTemplates[0]
-        if (!firstTemplate) {
-          setPresetExists(false)
-          return
-        }
-
-        const exists = Array.isArray(digitalHumanList)
-          ? digitalHumanList.some(
-              (item) => item.id === firstTemplate.id || item.name === firstTemplate.name,
-            )
-          : false
-        setPresetExists(exists)
       } catch (error: any) {
         if (cancelled) return
         setTemplates([])
-        setPresetExists(false)
         setListError(
           error?.description || intl.get('initialConfiguration.selectPreset.listLoadFailed'),
         )
@@ -65,27 +46,21 @@ const SystemPresetResourcePanel = ({ onConfirmSuccess }: SystemPresetResourcePan
     }
   }, [])
 
-  const first = templates[0]
-  const avatarSrc = useMemo(
-    () => resolveDigitalHumanIconSrc(first?.icon_id, defaultDigitalHumanAvatar),
-    [first?.icon_id],
-  )
-
-  const handleConfirm = async () => {
-    if (!first || listLoading || listError) return
-    if (presetExists) {
+  const handleConfirm = async (template: BuiltInDigitalHuman) => {
+    if (listLoading || listError) return
+    if (template.created) {
       onConfirmSuccess()
       return
     }
-    setCreating(true)
+    setCreatingIds((prev) => [...prev, template.id])
     try {
-      await createBuiltInDigitalHuman(first.id)
+      await createBuiltInDigitalHuman(template.id)
       onConfirmSuccess()
     } catch (e: unknown) {
       const desc = e && typeof e === 'object' && 'description' in e ? String(e.description) : ''
       message.error(desc || intl.get('initialConfiguration.selectPreset.createFailed'))
     } finally {
-      setCreating(false)
+      setCreatingIds((prev) => prev.filter((id) => id !== template.id))
     }
   }
 
@@ -109,27 +84,48 @@ const SystemPresetResourcePanel = ({ onConfirmSuccess }: SystemPresetResourcePan
             desc={listError}
             type="failed"
           />
-        ) : !first ? (
+        ) : templates.length === 0 ? (
           <Empty title={intl.get('initialConfiguration.selectPreset.emptyTitle')} />
         ) : (
-          <div className="flex flex-col items-center justify-center w-[264px] bg-black/[0.03] rounded-md px-5 py-5 text-left">
-            <div className="w-[64px] h-[64px] rounded-full overflow-hidden flex items-center justify-center">
-              <img src={avatarSrc} alt={first.name} className="w-full h-full object-cover" />
-            </div>
-            <div className="text-base font-medium text-[--dip-text-color] mt-1">{first.name}</div>
-            <div className="mt-2 mb-4 text-black/65 leading-6 text-center">
-              {first.description?.trim()}
-            </div>
-            <Button
-              type="primary"
-              onClick={() => void handleConfirm()}
-              loading={creating}
-              disabled={presetExists}
-            >
-              {presetExists
-                ? intl.get('initialConfiguration.selectPreset.installed')
-                : intl.get('initialConfiguration.selectPreset.installNow')}
-            </Button>
+          <div className="flex flex-wrap gap-4">
+            {templates.map((template) => {
+              const avatarSrc = resolveDigitalHumanIconSrc(
+                template.icon_id,
+                defaultDigitalHumanAvatar,
+              )
+              const creating = creatingIds.includes(template.id)
+
+              return (
+                <div
+                  key={template.id}
+                  className="flex flex-col items-center justify-center w-[264px] bg-black/[0.03] rounded-md px-5 py-5 text-left"
+                >
+                  <div className="w-[64px] h-[64px] rounded-full overflow-hidden flex items-center justify-center">
+                    <img
+                      src={avatarSrc}
+                      alt={template.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="text-base font-medium text-[--dip-text-color] mt-1">
+                    {template.name}
+                  </div>
+                  <div className="mt-2 mb-4 text-black/65 leading-6 text-center">
+                    {template.description?.trim()}
+                  </div>
+                  <Button
+                    type="primary"
+                    onClick={() => void handleConfirm(template)}
+                    loading={creating}
+                    disabled={template.created}
+                  >
+                    {template.created
+                      ? intl.get('initialConfiguration.selectPreset.installed')
+                      : intl.get('initialConfiguration.selectPreset.installNow')}
+                  </Button>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
