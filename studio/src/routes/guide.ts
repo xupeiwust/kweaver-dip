@@ -39,12 +39,16 @@ export function createGuideRouter(
   router.get(
     "/api/dip-studio/v1/guide/openclaw-config",
     async (
-      _request: Request,
+      request: Request,
       response: Response<OpenClawDetectedConfig>,
       next: NextFunction
     ): Promise<void> => {
       try {
-        response.status(200).json(await logic.getOpenClawConfig());
+        response.status(200).json(
+          await logic.getOpenClawConfig({
+            requestHost: readRequestHost(request)
+          })
+        );
       } catch (error) {
         next(
           error instanceof HttpError
@@ -75,6 +79,22 @@ export function createGuideRouter(
 }
 
 /**
+ * Reads the best available host name from proxy-aware request headers.
+ *
+ * @param request Express request.
+ * @returns The raw host value when available.
+ */
+export function readRequestHost(request: Request): string | undefined {
+  const forwardedHost = request.headers["x-forwarded-host"];
+
+  if (Array.isArray(forwardedHost)) {
+    return forwardedHost[0];
+  }
+
+  return forwardedHost ?? request.headers.host;
+}
+
+/**
  * Validates the guide initialization request body.
  *
  * @param requestBody Raw parsed request body.
@@ -100,21 +120,10 @@ export function readInitializeGuideRequestBody(
 
   const kweaverBaseUrl =
     typeof body.kweaver_base_url === "string" ? body.kweaver_base_url.trim() : "";
-  const kweaverToken =
-    typeof body.kweaver_token === "string" ? body.kweaver_token.trim() : "";
-
-  if (kweaverBaseUrl !== "" && kweaverToken === "") {
-    throw new HttpError(400, "kweaver_token is required when kweaver_base_url is provided");
-  }
-
-  if (kweaverBaseUrl === "" && kweaverToken !== "") {
-    throw new HttpError(400, "kweaver_base_url is required when kweaver_token is provided");
-  }
 
   return {
     openclaw_address: body.openclaw_address.trim(),
     openclaw_token: body.openclaw_token.trim(),
-    kweaver_base_url: kweaverBaseUrl === "" ? undefined : kweaverBaseUrl,
-    kweaver_token: kweaverToken === "" ? undefined : kweaverToken
+    kweaver_base_url: kweaverBaseUrl === "" ? undefined : kweaverBaseUrl
   };
 }

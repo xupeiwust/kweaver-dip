@@ -72,14 +72,12 @@ describe("readInitializeGuideRequestBody", () => {
       readInitializeGuideRequestBody({
         openclaw_address: "ws://127.0.0.1:19001",
         openclaw_token: "token-1",
-        kweaver_base_url: "https://kweaver.example.com",
-        kweaver_token: "kw-token"
+        kweaver_base_url: "https://kweaver.example.com"
       })
     ).toEqual({
       openclaw_address: "ws://127.0.0.1:19001",
       openclaw_token: "token-1",
-      kweaver_base_url: "https://kweaver.example.com",
-      kweaver_token: "kw-token"
+      kweaver_base_url: "https://kweaver.example.com"
     });
     expect(() => readInitializeGuideRequestBody(null)).toThrow(
       "Guide initialize request body must be a JSON object"
@@ -88,16 +86,6 @@ describe("readInitializeGuideRequestBody", () => {
       openclaw_address: "",
       openclaw_token: "token-1"
     })).toThrow("openclaw_address is required");
-    expect(() => readInitializeGuideRequestBody({
-      openclaw_address: "ws://127.0.0.1:19001",
-      openclaw_token: "token-1",
-      kweaver_base_url: "https://kweaver.example.com"
-    })).toThrow("kweaver_token is required when kweaver_base_url is provided");
-    expect(() => readInitializeGuideRequestBody({
-      openclaw_address: "ws://127.0.0.1:19001",
-      openclaw_token: "token-1",
-      kweaver_token: "kw-token"
-    })).toThrow("kweaver_base_url is required when kweaver_token is provided");
   });
 });
 
@@ -165,12 +153,9 @@ describe("createGuideRouter", () => {
 
   it("returns the detected OpenClaw and KWeaver config", async () => {
     const getOpenClawConfig = vi.fn().mockResolvedValue({
-      protocol: "ws",
-      host: "127.0.0.1",
-      port: 19001,
-      token: "token-1",
-      kweaver_base_url: "https://kweaver.example.com",
-      kweaver_token: "kw-token"
+      openclaw_address: "ws://127.0.0.1:19001",
+      openclaw_token: "token-1",
+      kweaver_base_url: "https://kweaver.example.com"
     });
     const router = createGuideRouter({
       getStatus: vi.fn(),
@@ -194,17 +179,20 @@ describe("createGuideRouter", () => {
     const response = createResponseDouble();
     const next = vi.fn<NextFunction>();
 
-    await layer?.route?.stack[0]?.handle({} as Request, response, next);
+    await layer?.route?.stack[0]?.handle({
+      headers: {
+        host: "studio.example.com"
+      }
+    } as Request, response, next);
 
-    expect(getOpenClawConfig).toHaveBeenCalledOnce();
+    expect(getOpenClawConfig).toHaveBeenCalledWith({
+      requestHost: "studio.example.com"
+    });
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith({
-      protocol: "ws",
-      host: "127.0.0.1",
-      port: 19001,
-      token: "token-1",
-      kweaver_base_url: "https://kweaver.example.com",
-      kweaver_token: "kw-token"
+      openclaw_address: "ws://127.0.0.1:19001",
+      openclaw_token: "token-1",
+      kweaver_base_url: "https://kweaver.example.com"
     });
     expect(next).not.toHaveBeenCalled();
   });
@@ -238,8 +226,7 @@ describe("createGuideRouter", () => {
         body: {
           openclaw_address: "ws://127.0.0.1:19001",
           openclaw_token: "token-1",
-          kweaver_base_url: "https://kweaver.example.com",
-          kweaver_token: "kw-token"
+          kweaver_base_url: "https://kweaver.example.com"
         }
       } as Request,
       response,
@@ -278,8 +265,7 @@ describe("createGuideRouter", () => {
         body: {
           openclaw_address: "ws://127.0.0.1:19001",
           openclaw_token: "token-1",
-          kweaver_base_url: "https://kweaver.example.com",
-          kweaver_token: "kw-token"
+          kweaver_base_url: "https://kweaver.example.com"
         }
       } as Request,
       response,

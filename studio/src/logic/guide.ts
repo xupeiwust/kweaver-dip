@@ -14,6 +14,7 @@ import {
   getOpenClawGatewayRuntimeConfig,
   loadEnvFile,
   readOptionalString,
+  buildGatewayUrl,
   resolveGatewayHost,
   resolveGatewayPort,
   resolveGatewayProtocol,
@@ -45,11 +46,6 @@ export interface NormalizedInitializeGuideRequest {
    * Optional KWeaver service base URL.
    */
   kweaver_base_url?: string;
-
-  /**
-   * Optional KWeaver access token.
-   */
-  kweaver_token?: string;
 
   /**
    * Derived OpenClaw config file path.
@@ -150,7 +146,7 @@ export interface GuideOpenClawConfigRefresher {
  */
 export interface GuideLogicOptions {
   /**
-   * Repository root that contains runtime files such as `.env`, `assets/`, and package.json.
+   * Service working directory that contains runtime files such as `.env`, `assets/`, and package.json.
    */
   studioRootDir?: string;
 
@@ -174,6 +170,16 @@ export interface GuideLogicOptions {
 }
 
 /**
+ * Options used when detecting OpenClaw connection settings for the guide UI.
+ */
+export interface OpenClawDetectedConfigOptions {
+  /**
+   * Host observed on the incoming HTTP request, used for external OpenClaw mode.
+   */
+  requestHost?: string;
+}
+
+/**
  * Public contract exposed by the bootstrap guide logic.
  */
 export interface GuideLogic {
@@ -189,7 +195,7 @@ export interface GuideLogic {
    *
    * @returns The detected OpenClaw configuration.
    */
-  getOpenClawConfig(): Promise<OpenClawDetectedConfig>;
+  getOpenClawConfig(options?: OpenClawDetectedConfigOptions): Promise<OpenClawDetectedConfig>;
 
   /**
    * Initializes DIP Studio local files and default OpenClaw assets.
@@ -273,8 +279,17 @@ export class DefaultGuideLogic implements GuideLogic {
    *
    * @returns The detected OpenClaw configuration.
    */
-  public async getOpenClawConfig(): Promise<OpenClawDetectedConfig> {
-    return readOpenClawDetectedConfigFromEnv(process.env);
+  public async getOpenClawConfig(
+    options: OpenClawDetectedConfigOptions = {}
+  ): Promise<OpenClawDetectedConfig> {
+    return readOpenClawDetectedConfig({
+      envSource: process.env,
+      openClawConfigPath: resolveOpenClawLocalPathsFromEnv(
+        process.env,
+        this.studioRootDir
+      ).configPath,
+      requestHost: options.requestHost
+    });
   }
 
   /**
@@ -399,33 +414,192 @@ export function resolveInjectedPath(
 }
 
 /**
- * Reads OpenClaw connection information from injected environment variables.
+ * Reads OpenClaw connection information for the initialization guide.
+ *
+ * @param options Environment, OpenClaw config path, and optional request host.
+ * @returns The resolved gateway configuration.
+ * @throws {HttpError} Thrown when required variables or OpenClaw token are missing.
+ */
+export async function readOpenClawDetectedConfig(options: {
+  envSource: NodeJS.ProcessEnv;
+  openClawConfigPath: string;
+  requestHost?: string;
+}): Promise<OpenClawDetectedConfig> {
+  const configuredToken = readOptionalString(options.envSource.OPENCLAW_GATEWAY_TOKEN);
+  const openclawAddress =
+    configuredToken === undefined
+      ? resolveDefaultOpenClawGatewayAddress(options.envSource, options.requestHost)
+      : resolveConfiguredOpenClawGatewayAddress(options.envSource);
+  const openclawToken =
+    configuredToken ??
+    await readOpenClawGatewayTokenFromConfig(options.openClawConfigPath);
+
+  return {
+    openclaw_address: openclawAddress,
+    openclaw_token: openclawToken,
+    kweaver_base_url:
+      readOptionalString(options.envSource.KWEAVER_BASE_URL) ??
+      "http://bkn-backend-svc:13014"
+  };
+}
+
+/**
+ * Backward-compatible helper for tests that only need environment-backed config.
  *
  * @param envSource Environment variable source.
  * @returns The resolved gateway configuration.
- * @throws {HttpError} Thrown when required variables are missing.
  */
-export function readOpenClawDetectedConfigFromEnv(
+export async function readOpenClawDetectedConfigFromEnv(
   envSource: NodeJS.ProcessEnv
-): OpenClawDetectedConfig {
-  const token = readOptionalString(envSource.OPENCLAW_GATEWAY_TOKEN);
+): Promise<OpenClawDetectedConfig> {
+  return readOpenClawDetectedConfig({
+    envSource,
+    openClawConfigPath: join(homedir(), ".openclaw", "openclaw.json")
+  });
+}
+
+/**
+ * Resolves a gateway address from existing Studio environment values.
+ *
+ * @param envSource Environment variable source.
+ * @returns The configured OpenClaw Gateway WebSocket URL.
+ */
+export function resolveConfiguredOpenClawGatewayAddress(
+  envSource: NodeJS.ProcessEnv
+): string {
+  return trimTrailingGatewaySlash(
+    readOptionalString(envSource.OPENCLAW_GATEWAY_URL) ??
+    buildGatewayUrl(
+      resolveGatewayProtocol(envSource.OPENCLAW_GATEWAY_PROTOCOL),
+      resolveGatewayHost(envSource.OPENCLAW_GATEWAY_HOST),
+      resolveGatewayPort(envSource.OPENCLAW_GATEWAY_PORT)
+    )
+  );
+}
+
+/**
+ * Resolves the default gateway address before Studio has been initialized.
+ *
+ * @param envSource Environment variable source.
+ * @param requestHost Host observed from the HTTP request.
+ * @returns The default OpenClaw Gateway WebSocket URL.
+ */
+export function resolveDefaultOpenClawGatewayAddress(
+  envSource: NodeJS.ProcessEnv,
+  requestHost?: string
+): string {
+  const host = isExternalOpenClawEnabled(envSource.USE_EXTERNAL_OPENCLAW)
+    ? resolveExternalOpenClawHost(requestHost)
+    : "127.0.0.1";
+  const normalizedHost = host.includes(":") ? `[${host}]` : host;
+
+  return trimTrailingGatewaySlash(buildGatewayUrl("ws", normalizedHost, 19_001));
+}
+
+/**
+ * Removes the URL root trailing slash from gateway addresses shown in guide UI.
+ *
+ * @param address Normalized gateway URL.
+ * @returns Gateway URL without a trailing `/`.
+ */
+export function trimTrailingGatewaySlash(address: string): string {
+  return address.endsWith("/") ? address.slice(0, -1) : address;
+}
+
+/**
+ * Reads the gateway token persisted by OpenClaw.
+ *
+ * @param configPath OpenClaw config file path.
+ * @returns The gateway token.
+ * @throws {HttpError} Thrown when the config file cannot provide a token.
+ */
+export async function readOpenClawGatewayTokenFromConfig(
+  configPath: string
+): Promise<string> {
+  let config: unknown;
+
+  try {
+    config = JSON.parse(await readFile(configPath, "utf8"));
+  } catch {
+    throw new HttpError(
+      500,
+      "OpenClaw gateway token is missing from openclaw.json",
+      "OPENCLAW_CONFIG_NOT_FOUND"
+    );
+  }
+
+  const token = extractOpenClawGatewayToken(config);
 
   if (token === undefined) {
     throw new HttpError(
       500,
-      "OpenClaw connection info is missing from environment",
-      "OPENCLAW_ENV_NOT_FOUND"
+      "OpenClaw gateway token is missing from openclaw.json",
+      "OPENCLAW_GATEWAY_TOKEN_NOT_FOUND"
     );
   }
 
-  return {
-    protocol: resolveGatewayProtocol(envSource.OPENCLAW_GATEWAY_PROTOCOL),
-    host: resolveGatewayHost(envSource.OPENCLAW_GATEWAY_HOST),
-    port: resolveGatewayPort(envSource.OPENCLAW_GATEWAY_PORT),
-    token,
-    kweaver_base_url: readOptionalString(envSource.KWEAVER_BASE_URL),
-    kweaver_token: readOptionalString(envSource.KWEAVER_TOKEN)
-  };
+  return token;
+}
+
+/**
+ * Extracts the gateway token from `gateway.auth.token`.
+ *
+ * @param config Parsed OpenClaw config object.
+ * @returns The token when present.
+ */
+export function extractOpenClawGatewayToken(config: unknown): string | undefined {
+  if (typeof config !== "object" || config === null || Array.isArray(config)) {
+    return undefined;
+  }
+
+  const root = config as Record<string, unknown>;
+  const gateway = root.gateway;
+
+  if (typeof gateway !== "object" || gateway === null || Array.isArray(gateway)) {
+    return undefined;
+  }
+
+  const gatewayRecord = gateway as Record<string, unknown>;
+  const auth = gatewayRecord.auth;
+
+  if (typeof auth !== "object" || auth === null || Array.isArray(auth)) {
+    return undefined;
+  }
+
+  const authToken = (auth as Record<string, unknown>).token;
+
+  return typeof authToken === "string" ? readOptionalString(authToken) : undefined;
+}
+
+/**
+ * Reads the external OpenClaw switch.
+ *
+ * @param value Raw USE_EXTERNAL_OPENCLAW value.
+ * @returns Whether external OpenClaw mode is enabled.
+ */
+export function isExternalOpenClawEnabled(value: string | undefined): boolean {
+  return readOptionalString(value)?.toLowerCase() === "true";
+}
+
+/**
+ * Resolves the host portion used for external OpenClaw before initialization.
+ *
+ * @param requestHost Raw Host or X-Forwarded-Host header value.
+ * @returns The normalized host name without port.
+ */
+export function resolveExternalOpenClawHost(requestHost: string | undefined): string {
+  const firstHost = readOptionalString(requestHost)?.split(",", 1)[0]?.trim();
+
+  if (firstHost === undefined || firstHost === "") {
+    return "127.0.0.1";
+  }
+
+  if (firstHost.startsWith("[")) {
+    const end = firstHost.indexOf("]");
+    return end > 0 ? firstHost.slice(1, end) : firstHost;
+  }
+
+  return firstHost.split(":", 1)[0] ?? firstHost;
 }
 
 /**
@@ -449,7 +623,6 @@ export function normalizeInitializeGuideRequest(
   );
   const token = readRequiredGuideString(request.openclaw_token, "openclaw_token");
   const kweaverBaseUrl = readOptionalString(request.kweaver_base_url);
-  const kweaverToken = readOptionalString(request.kweaver_token);
   const parsedAddress = parseOpenClawAddress(address);
   const stateDir =
     localPaths?.stateDir ??
@@ -461,7 +634,6 @@ export function normalizeInitializeGuideRequest(
     openclaw_address: address,
     openclaw_token: token,
     kweaver_base_url: kweaverBaseUrl,
-    kweaver_token: kweaverToken,
     configPath,
     protocol: parsedAddress.protocol,
     host: parsedAddress.host,
@@ -542,8 +714,7 @@ export function buildGuideEnvEntries(
     ["OPENCLAW_GATEWAY_HOST", request.host],
     ["OPENCLAW_GATEWAY_PORT", String(request.port)],
     ["OPENCLAW_GATEWAY_TOKEN", request.token],
-    ["KWEAVER_BASE_URL", request.kweaver_base_url ?? ""],
-    ["KWEAVER_TOKEN", request.kweaver_token ?? ""]
+    ["KWEAVER_BASE_URL", request.kweaver_base_url ?? ""]
   ];
 }
 
@@ -570,7 +741,6 @@ export function buildGuideEnvFileContent(
     "OPENCLAW_GATEWAY_TIMEOUT_MS=5000",
     "",
     `KWEAVER_BASE_URL=${encodeEnvValue(request.kweaver_base_url ?? "")}`,
-    `KWEAVER_TOKEN=${encodeEnvValue(request.kweaver_token ?? "")}`,
     "",
     "OAUTH_MOCK_USER_ID=",
     "KWEAVER_HYDRA_ADMIN_URL=",
@@ -591,7 +761,6 @@ export function buildOpenClawRootEnvEntries(
 ): ReadonlyArray<readonly [string, string]> {
   return [
     ["KWEAVER_BASE_URL", request.kweaver_base_url ?? ""],
-    ["KWEAVER_TOKEN", request.kweaver_token ?? ""],
     ["KWEAVER_BUSINESS_DOMAIN", "bd_public"],
     ["KWEAVER_TLS_INSECURE", "1"]
   ];

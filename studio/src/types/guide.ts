@@ -40,34 +40,19 @@ export interface GuideStatusResponse {
  */
 export interface OpenClawDetectedConfig {
   /**
-   * Resolved gateway protocol.
+   * Full OpenClaw gateway address, for example `ws://127.0.0.1:19001`.
    */
-  protocol: "ws" | "wss";
+  openclaw_address: string;
 
   /**
-   * Resolved gateway host.
+   * OpenClaw gateway auth token.
    */
-  host: string;
-
-  /**
-   * Resolved gateway port.
-   */
-  port: number;
-
-  /**
-   * Gateway auth token loaded from injected environment variables.
-   */
-  token: string;
+  openclaw_token: string;
 
   /**
    * Optional KWeaver service base URL loaded from injected environment variables.
    */
   kweaver_base_url?: string;
-
-  /**
-   * Optional KWeaver access token loaded from injected environment variables.
-   */
-  kweaver_token?: string;
 }
 
 /**
@@ -88,9 +73,4 @@ export interface InitializeGuideRequest {
    * Optional KWeaver service base URL.
    */
   kweaver_base_url?: string;
-
-  /**
-   * Optional KWeaver access token.
-   */
-  kweaver_token?: string;
 }

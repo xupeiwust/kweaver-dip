@@ -24,10 +24,6 @@
       "kweaverBaseUrlInvalidProtocol": "KWeaver 服務位址需使用 http 或 https 協議",
       "kweaverBaseUrlInvalid": "請輸入有效的 KWeaver 服務位址（需含協議，如 https://example.com）",
       "kweaverBaseUrlPlaceholder": "例如 https://example.com",
-      "kweaverTokenLabel": "KWeaver Token",
-      "kweaverTokenRequiredWhenBaseUrl": "填寫 KWeaver 服務位址後，KWeaver Token 為必填",
-      "kweaverTokenPlaceholder": "請輸入 KWeaver Token",
-      "kweaverTokenPlaceholderDisabled": "請先填寫 KWeaver 服務位址",
       "next": "下一步"
     },
     "check": {

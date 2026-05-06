@@ -31,8 +31,6 @@ const SystemConnectOpenClawPanel = ({ onCancel }: SystemConnectOpenClawPanelProp
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [showSuccessBanner, setShowSuccessBanner] = useState(false)
-  const kweaverBaseUrl = Form.useWatch('kweaver_base_url', form)
-  const hasKweaverBaseUrl = Boolean(kweaverBaseUrl?.trim())
 
   useEffect(() => {
     let cancelled = false
@@ -42,10 +40,9 @@ const SystemConnectOpenClawPanel = ({ onCancel }: SystemConnectOpenClawPanelProp
         const cfg: OpenClawDetectedConfig = await getOpenClawDetectedConfig()
         if (cancelled) return
         form.setFieldsValue({
-          openclaw_address: `${cfg.protocol}://${cfg.host}:${cfg.port}`,
-          openclaw_token: cfg.token,
+          openclaw_address: cfg.openclaw_address,
+          openclaw_token: cfg.openclaw_token,
           kweaver_base_url: cfg.kweaver_base_url,
-          kweaver_token: cfg.kweaver_token,
         })
       } catch {
         // noop: 用户可手动填写
@@ -63,13 +60,11 @@ const SystemConnectOpenClawPanel = ({ onCancel }: SystemConnectOpenClawPanelProp
     const openclawAddress = values.openclaw_address.trim()
     const openclawToken = values.openclaw_token.trim()
     const kweaverBaseUrl = values.kweaver_base_url?.trim()
-    const kweaverToken = values.kweaver_token?.trim()
 
     return {
       openclaw_address: openclawAddress,
       openclaw_token: openclawToken,
       ...(kweaverBaseUrl ? { kweaver_base_url: kweaverBaseUrl } : {}),
-      ...(kweaverBaseUrl && kweaverToken ? { kweaver_token: kweaverToken } : {}),
     }
   }
 
@@ -120,15 +115,11 @@ const SystemConnectOpenClawPanel = ({ onCancel }: SystemConnectOpenClawPanelProp
             openclaw_address: '',
             openclaw_token: '',
             kweaver_base_url: '',
-            kweaver_token: '',
           }}
           onValuesChange={(changedValues) => {
             setShowSuccessBanner(false)
             const changedKeys = Object.keys(changedValues) as Array<keyof GuideInitializeRequest>
             const fieldsToClear = changedKeys.map((key) => ({ name: key, errors: [] }))
-            if (changedKeys.includes('kweaver_base_url')) {
-              fieldsToClear.push({ name: 'kweaver_token', errors: [] })
-            }
             form.setFields(fieldsToClear)
           }}
           onFinish={(values) => {
@@ -176,35 +167,6 @@ const SystemConnectOpenClawPanel = ({ onCancel }: SystemConnectOpenClawPanelProp
             <Input
               placeholder={intl.get('initialConfiguration.connect.kweaverBaseUrlPlaceholder')}
               disabled={loading}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label={intl.get('initialConfiguration.connect.kweaverTokenLabel')}
-            name="kweaver_token"
-            validateTrigger="onSubmit"
-            rules={[
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  const baseUrl = getFieldValue('kweaver_base_url')?.trim()
-                  if (!baseUrl) return Promise.resolve()
-                  if (value?.trim()) return Promise.resolve()
-                  return Promise.reject(
-                    new Error(
-                      intl.get('initialConfiguration.connect.kweaverTokenRequiredWhenBaseUrl'),
-                    ),
-                  )
-                },
-              }),
-            ]}
-          >
-            <Input
-              placeholder={
-                hasKweaverBaseUrl
-                  ? intl.get('initialConfiguration.connect.kweaverTokenPlaceholder')
-                  : intl.get('initialConfiguration.connect.kweaverTokenPlaceholderDisabled')
-              }
-              disabled={!hasKweaverBaseUrl || loading}
             />
           </Form.Item>
         </Form>

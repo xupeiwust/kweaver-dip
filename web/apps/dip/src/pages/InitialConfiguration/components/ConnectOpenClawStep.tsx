@@ -37,9 +37,6 @@ const ConnectOpenClawStep = ({
   form,
   onNextFromConnect,
 }: ConnectOpenClawStepProps) => {
-  const kweaverBaseUrl = Form.useWatch('kweaver_base_url', form)
-  const hasKweaverBaseUrl = Boolean(kweaverBaseUrl?.trim())
-
   return (
     <div className="w-full h-full flex flex-col">
       {loading ? (
@@ -65,14 +62,10 @@ const ConnectOpenClawStep = ({
               openclaw_address: '',
               openclaw_token: '',
               kweaver_base_url: '',
-              kweaver_token: '',
             }}
             onValuesChange={(changedValues) => {
               const changedKeys = Object.keys(changedValues) as Array<keyof GuideInitializeRequest>
               const fieldsToClear = changedKeys.map((key) => ({ name: key, errors: [] }))
-              if (changedKeys.includes('kweaver_base_url')) {
-                fieldsToClear.push({ name: 'kweaver_token', errors: [] })
-              }
               form.setFields(fieldsToClear)
             }}
             onFinish={onNextFromConnect}
@@ -113,35 +106,6 @@ const ConnectOpenClawStep = ({
             >
               <Input
                 placeholder={intl.get('initialConfiguration.connect.kweaverBaseUrlPlaceholder')}
-              />
-            </Form.Item>
-
-            <Form.Item
-              label={intl.get('initialConfiguration.connect.kweaverTokenLabel')}
-              name="kweaver_token"
-              validateTrigger="onSubmit"
-              rules={[
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    const baseUrl = getFieldValue('kweaver_base_url')?.trim()
-                    if (!baseUrl) return Promise.resolve()
-                    if (value?.trim()) return Promise.resolve()
-                    return Promise.reject(
-                      new Error(
-                        intl.get('initialConfiguration.connect.kweaverTokenRequiredWhenBaseUrl'),
-                      ),
-                    )
-                  },
-                }),
-              ]}
-            >
-              <Input
-                placeholder={
-                  hasKweaverBaseUrl
-                    ? intl.get('initialConfiguration.connect.kweaverTokenPlaceholder')
-                    : intl.get('initialConfiguration.connect.kweaverTokenPlaceholderDisabled')
-                }
-                disabled={!hasKweaverBaseUrl}
               />
             </Form.Item>
 

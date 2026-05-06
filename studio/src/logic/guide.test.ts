@@ -31,8 +31,12 @@ import {
   parseOpenClawAddress,
   parseDotEnv,
   openClawRootEnvEntriesNeedUpdate,
+  readOpenClawDetectedConfig,
   readOpenClawDetectedConfigFromEnv,
+  readOpenClawGatewayTokenFromConfig,
   refreshOpenClawRuntimeEnv,
+  resolveDefaultOpenClawGatewayAddress,
+  resolveExternalOpenClawHost,
   resolveInjectedPath,
   resolveOpenClawLocalPathsFromEnv,
   stripWrappingQuotes,
@@ -40,34 +44,100 @@ import {
 } from "./guide";
 
 describe("readOpenClawDetectedConfigFromEnv", () => {
-  it("reads the gateway connection info from injected env vars", () => {
-    expect(
+  it("reads the gateway connection info from injected env vars", async () => {
+    await expect(
       readOpenClawDetectedConfigFromEnv({
         OPENCLAW_GATEWAY_PROTOCOL: "wss",
         OPENCLAW_GATEWAY_HOST: "gateway.example.com",
         OPENCLAW_GATEWAY_PORT: "18443",
         OPENCLAW_GATEWAY_TOKEN: " token-1 ",
-        KWEAVER_BASE_URL: " https://kweaver.example.com ",
-        KWEAVER_TOKEN: " kw-token "
+        KWEAVER_BASE_URL: " https://kweaver.example.com "
       })
-    ).toEqual({
-      protocol: "wss",
-      host: "gateway.example.com",
-      port: 18443,
-      token: "token-1",
-      kweaver_base_url: "https://kweaver.example.com",
-      kweaver_token: "kw-token"
+    ).resolves.toEqual({
+      openclaw_address: "wss://gateway.example.com:18443",
+      openclaw_token: "token-1",
+      kweaver_base_url: "https://kweaver.example.com"
     });
   });
 
-  it("rejects missing gateway token", () => {
-    expect(() => readOpenClawDetectedConfigFromEnv({})).toThrowError(
+  it("reads fallback gateway token from openclaw.json", async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), "dip-openclaw-config-"));
+    const configPath = join(rootDir, "openclaw.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({ gateway: { auth: { token: "config-token" } } }),
+      "utf8"
+    );
+
+    await expect(
+      readOpenClawDetectedConfig({
+        envSource: {
+          USE_EXTERNAL_OPENCLAW: "true"
+        },
+        openClawConfigPath: configPath,
+        requestHost: "studio.example.com:3000"
+      })
+    ).resolves.toEqual({
+      openclaw_address: "ws://studio.example.com:19001",
+      openclaw_token: "config-token",
+      kweaver_base_url: "http://bkn-backend-svc:13014"
+    });
+
+    await rm(rootDir, { recursive: true, force: true });
+  });
+
+  it("does not read gateway token from gateway.token", async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), "dip-openclaw-config-"));
+    const configPath = join(rootDir, "openclaw.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({ gateway: { token: "legacy-token" } }),
+      "utf8"
+    );
+
+    await expect(readOpenClawGatewayTokenFromConfig(configPath)).rejects.toThrowError(
       new HttpError(
         500,
-        "OpenClaw connection info is missing from environment",
-        "OPENCLAW_ENV_NOT_FOUND"
+        "OpenClaw gateway token is missing from openclaw.json",
+        "OPENCLAW_GATEWAY_TOKEN_NOT_FOUND"
       )
     );
+
+    await rm(rootDir, { recursive: true, force: true });
+  });
+
+  it("rejects missing gateway token from openclaw.json", async () => {
+    await expect(
+      readOpenClawDetectedConfig({
+        envSource: {},
+        openClawConfigPath: "/missing/openclaw.json"
+      })
+    ).rejects.toThrowError(
+      new HttpError(
+        500,
+        "OpenClaw gateway token is missing from openclaw.json",
+        "OPENCLAW_CONFIG_NOT_FOUND"
+      )
+    );
+  });
+
+  it("resolves default gateway address by OpenClaw mode", () => {
+    expect(resolveDefaultOpenClawGatewayAddress({}, "studio.example.com:3000")).toBe(
+      "ws://127.0.0.1:19001"
+    );
+    expect(
+      resolveDefaultOpenClawGatewayAddress(
+        { USE_EXTERNAL_OPENCLAW: "true" },
+        "studio.example.com:3000"
+      )
+    ).toBe("ws://studio.example.com:19001");
+    expect(resolveExternalOpenClawHost("[::1]:3000")).toBe("::1");
+    expect(
+      resolveDefaultOpenClawGatewayAddress(
+        { USE_EXTERNAL_OPENCLAW: "true" },
+        "[::1]:3000"
+      )
+    ).toBe("ws://[::1]:19001");
   });
 });
 
@@ -128,14 +198,12 @@ describe("normalizeInitializeGuideRequest", () => {
       normalizeInitializeGuideRequest({
         openclaw_address: "ws://127.0.0.1:19001",
         openclaw_token: "token-1",
-        kweaver_base_url: "https://kweaver.example.com",
-        kweaver_token: "kw-token"
+        kweaver_base_url: "https://kweaver.example.com"
       })
     ).toEqual({
       openclaw_address: "ws://127.0.0.1:19001",
       openclaw_token: "token-1",
       kweaver_base_url: "https://kweaver.example.com",
-      kweaver_token: "kw-token",
       configPath: join(process.env.HOME ?? "", ".openclaw", "openclaw.json"),
       protocol: "ws",
       host: "127.0.0.1",
@@ -152,7 +220,6 @@ describe("normalizeInitializeGuideRequest", () => {
         openclaw_address: "ws://127.0.0.1:19001",
         openclaw_token: "token-1",
         kweaver_base_url: "https://kweaver.example.com",
-        kweaver_token: "kw-token",
         configPath: "/tmp/openclaw/openclaw.json",
         protocol: "ws",
         host: "127.0.0.1",
@@ -166,8 +233,7 @@ describe("normalizeInitializeGuideRequest", () => {
       ["OPENCLAW_GATEWAY_HOST", "127.0.0.1"],
       ["OPENCLAW_GATEWAY_PORT", "19001"],
       ["OPENCLAW_GATEWAY_TOKEN", "token-1"],
-      ["KWEAVER_BASE_URL", "https://kweaver.example.com"],
-      ["KWEAVER_TOKEN", "kw-token"]
+      ["KWEAVER_BASE_URL", "https://kweaver.example.com"]
     ]);
   });
 
@@ -177,7 +243,6 @@ describe("normalizeInitializeGuideRequest", () => {
         openclaw_address: "ws://127.0.0.1:19001",
         openclaw_token: "token-1",
         kweaver_base_url: "https://kweaver.example.com",
-        kweaver_token: "kw-token",
         configPath: "/tmp/openclaw/openclaw.json",
         protocol: "ws",
         host: "127.0.0.1",
@@ -188,7 +253,6 @@ describe("normalizeInitializeGuideRequest", () => {
       })
     ).toEqual([
       ["KWEAVER_BASE_URL", "https://kweaver.example.com"],
-      ["KWEAVER_TOKEN", "kw-token"],
       ["KWEAVER_BUSINESS_DOMAIN", "bd_public"],
       ["KWEAVER_TLS_INSECURE", "1"]
     ]);
@@ -199,7 +263,6 @@ describe("normalizeInitializeGuideRequest", () => {
       openclaw_address: "ws://127.0.0.1:19001",
       openclaw_token: "token-1",
       kweaver_base_url: "https://kweaver.example.com",
-      kweaver_token: "kw-token",
       configPath: "/tmp/openclaw/openclaw.json",
       protocol: "ws",
       host: "127.0.0.1",
@@ -301,12 +364,9 @@ describe("DefaultGuideLogic", () => {
 
     try {
       await expect(logic.getOpenClawConfig()).resolves.toEqual({
-        protocol: "ws",
-        host: "127.0.0.1",
-        port: 19001,
-        token: "token-1",
-        kweaver_base_url: undefined,
-        kweaver_token: undefined
+        openclaw_address: "ws://127.0.0.1:19001",
+        openclaw_token: "token-1",
+        kweaver_base_url: "http://bkn-backend-svc:13014"
       });
       expect(execFile).not.toHaveBeenCalled();
     } finally {
@@ -338,7 +398,6 @@ describe("DefaultGuideLogic", () => {
       })
     };
     const prevKweaverBaseUrl = process.env.KWEAVER_BASE_URL;
-    const prevKweaverToken = process.env.KWEAVER_TOKEN;
     const logic = new DefaultGuideLogic({
       studioRootDir,
       commandRunner: {
@@ -352,8 +411,7 @@ describe("DefaultGuideLogic", () => {
       logic.initialize({
         openclaw_address: "ws://127.0.0.1:19001",
         openclaw_token: "token-1",
-        kweaver_base_url: "https://kweaver.example.com",
-        kweaver_token: "kw-token"
+        kweaver_base_url: "https://kweaver.example.com"
       })
     ).resolves.toBeUndefined();
 
@@ -367,7 +425,6 @@ describe("DefaultGuideLogic", () => {
       expect(envContent.split("\n").every((line) => line === line.replace(/[ \t]+$/, ""))).toBe(true);
       expect(process.env.OPENCLAW_GATEWAY_TOKEN).toBe("token-1");
       expect(process.env.KWEAVER_BASE_URL).toBe("https://kweaver.example.com");
-      expect(process.env.KWEAVER_TOKEN).toBe("kw-token");
       const openclawEnv = await readFile(
         join(fakeHomeForOsMock, ".openclaw", ".env"),
         "utf8"
@@ -397,11 +454,6 @@ describe("DefaultGuideLogic", () => {
       } else {
         process.env.KWEAVER_BASE_URL = prevKweaverBaseUrl;
       }
-      if (prevKweaverToken === undefined) {
-        delete process.env.KWEAVER_TOKEN;
-      } else {
-        process.env.KWEAVER_TOKEN = prevKweaverToken;
-      }
       fakeHomeForOsMock = process.env.HOME ?? "/tmp";
       await rm(studioRootDir, { recursive: true, force: true });
     }
@@ -415,7 +467,6 @@ describe("DefaultGuideLogic", () => {
       join(fakeHomeForOsMock, ".openclaw", ".env"),
       [
         "KWEAVER_BASE_URL=https://kweaver.example.com",
-        "KWEAVER_TOKEN=kw-token",
         "KWEAVER_BUSINESS_DOMAIN=bd_public",
         "KWEAVER_TLS_INSECURE=1",
         ""
@@ -440,7 +491,6 @@ describe("DefaultGuideLogic", () => {
       })
     };
     const prevKweaverBaseUrl = process.env.KWEAVER_BASE_URL;
-    const prevKweaverToken = process.env.KWEAVER_TOKEN;
     const logic = new DefaultGuideLogic({
       studioRootDir,
       commandRunner: {
@@ -455,8 +505,7 @@ describe("DefaultGuideLogic", () => {
         logic.initialize({
           openclaw_address: "ws://127.0.0.1:19001",
           openclaw_token: "token-1",
-          kweaver_base_url: "https://kweaver.example.com",
-          kweaver_token: "kw-token"
+          kweaver_base_url: "https://kweaver.example.com"
         })
       ).resolves.toBeUndefined();
 
@@ -467,11 +516,6 @@ describe("DefaultGuideLogic", () => {
         delete process.env.KWEAVER_BASE_URL;
       } else {
         process.env.KWEAVER_BASE_URL = prevKweaverBaseUrl;
-      }
-      if (prevKweaverToken === undefined) {
-        delete process.env.KWEAVER_TOKEN;
-      } else {
-        process.env.KWEAVER_TOKEN = prevKweaverToken;
       }
       fakeHomeForOsMock = process.env.HOME ?? "/tmp";
       await rm(studioRootDir, { recursive: true, force: true });
@@ -519,21 +563,19 @@ describe("OpenClaw root env helpers", () => {
     const envFilePath = join(rootDir, ".env");
 
     await mergeOpenClawRootEnv(envFilePath, [
-      ["KWEAVER_BASE_URL", "https://kweaver.example.com"],
-      ["KWEAVER_TOKEN", "kw-token"]
+      ["KWEAVER_BASE_URL", "https://kweaver.example.com"]
     ]);
 
     expect(await readFile(envFilePath, "utf8")).toBe(
-      ["KWEAVER_BASE_URL=https://kweaver.example.com", "KWEAVER_TOKEN=kw-token", ""].join("\n")
+      ["KWEAVER_BASE_URL=https://kweaver.example.com", ""].join("\n")
     );
 
     await mergeOpenClawRootEnv(envFilePath, [
-      ["KWEAVER_BASE_URL", ""],
-      ["KWEAVER_TOKEN", ""]
+      ["KWEAVER_BASE_URL", ""]
     ]);
 
     expect(await readFile(envFilePath, "utf8")).toBe(
-      ["KWEAVER_BASE_URL=", "KWEAVER_TOKEN=", ""].join("\n")
+      ["KWEAVER_BASE_URL=", ""].join("\n")
     );
   });
 
@@ -541,8 +583,7 @@ describe("OpenClaw root env helpers", () => {
     const rootDir = await mkdtemp(join(tmpdir(), "dip-openclaw-root-env-check-"));
     const envFilePath = join(rootDir, ".env");
     const entries = [
-      ["KWEAVER_BASE_URL", "https://kweaver.example.com"],
-      ["KWEAVER_TOKEN", "kw-token"]
+      ["KWEAVER_BASE_URL", "https://kweaver.example.com"]
     ] as const;
 
     await expect(openClawRootEnvEntriesNeedUpdate(envFilePath, entries)).resolves.toBe(true);
@@ -556,8 +597,7 @@ describe("OpenClaw root env helpers", () => {
     await expect(openClawRootEnvEntriesNeedUpdate(envFilePath, entries)).resolves.toBe(false);
     await expect(
       openClawRootEnvEntriesNeedUpdate(envFilePath, [
-        ["KWEAVER_BASE_URL", "https://new.example.com"],
-        ["KWEAVER_TOKEN", "kw-token"]
+        ["KWEAVER_BASE_URL", "https://new.example.com"]
       ])
     ).resolves.toBe(true);
   });

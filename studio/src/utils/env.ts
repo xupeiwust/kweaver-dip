@@ -144,6 +144,7 @@ export function getOpenClawGatewayRuntimeConfig(
  * Loads variables from a local environment file once.
  *
  * @param options Optional loading behavior for tests and alternate env files.
+ * Defaults to `.env` under the service process working directory.
  */
 export function loadEnvFile(options: LoadEnvFileOptions = {}): void {
   if (hasLoadedDotEnv && options.forceReload !== true) {
@@ -151,7 +152,7 @@ export function loadEnvFile(options: LoadEnvFileOptions = {}): void {
   }
 
   loadDotEnvConfig({
-    path: options.path,
+    path: options.path ?? join(process.cwd(), ".env"),
     override: options.override,
     quiet: true
   });

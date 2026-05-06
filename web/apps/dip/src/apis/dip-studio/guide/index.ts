@@ -13,7 +13,6 @@ import {
 } from './mockGuide'
 
 export type {
-  GatewayProtocol,
   GuideInitializeRequest,
   GuideInitializeResponse,
   GuideMissingField,

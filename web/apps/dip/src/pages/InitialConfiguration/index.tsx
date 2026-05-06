@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   type GuideInitializeRequest,
   type GuideInitializeResponse,
+  getOpenClawDetectedConfig,
   initializeGuide,
 } from '@/apis/dip-studio/guide'
 import ScrollBarContainer from '@/components/ScrollBarContainer'
@@ -28,8 +29,7 @@ const InitialConfiguration = () => {
   const isAdmin = useUserInfoStore((s) => s.isAdmin)
   const [step, setStep] = useState<StepKey>(0)
 
-  // const [loading, setLoading] = useState(false)
-  // const [detectedConfig, setDetectedConfig] = useState<OpenClawDetectedConfig | null>(null)
+  const [loading, setLoading] = useState(false)
   const [openClawValues, setOpenClawValues] = useState<GuideInitializeRequest | null>(null)
 
   const [submitting, setSubmitting] = useState(false)
@@ -38,18 +38,23 @@ const InitialConfiguration = () => {
 
   const [form] = Form.useForm<GuideInitializeRequest>()
 
-  // const fetchOpenClawConfig = async () => {
-  //   try {
-  //     setLoading(true)
-  //     const cfg = await getOpenClawDetectedConfig()
-  //     setDetectedConfig(cfg)
-  //   } catch {
-  //     // 获取失败时静默处理，允许用户手动填写
-  //     setDetectedConfig(null)
-  //   } finally {
-  //     setLoading(false)
-  //   }
-  // }
+  const fetchOpenClawConfig = async () => {
+    try {
+      setLoading(true)
+      const cfg = await getOpenClawDetectedConfig()
+      form.setFieldsValue({
+        openclaw_address: cfg.openclaw_address,
+        openclaw_token: cfg.openclaw_token,
+        kweaver_base_url: cfg.kweaver_base_url ?? DEFAULT_KWEAVER_BASE_URL,
+      })
+    } catch {
+      form.setFieldsValue({
+        kweaver_base_url: DEFAULT_KWEAVER_BASE_URL,
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!isAdmin) {
@@ -57,18 +62,8 @@ const InitialConfiguration = () => {
       return
     }
 
-    // void fetchOpenClawConfig()
-  }, [isAdmin, navigate])
-
-  useEffect(() => {
-    // if (!detectedConfig) return
-
-    form.setFieldsValue({
-      // openclaw_address: `${detectedConfig.protocol}://${detectedConfig.host}:${detectedConfig.port}`,
-      // openclaw_token: detectedConfig.token,
-      kweaver_base_url: DEFAULT_KWEAVER_BASE_URL,
-    })
-  }, [form])
+    void fetchOpenClawConfig()
+  }, [isAdmin, navigate, form])
 
   useEffect(() => {
     if (step !== 3 || !initResult) return
@@ -84,13 +79,11 @@ const InitialConfiguration = () => {
     const openclawAddress = values.openclaw_address.trim()
     const openclawToken = values.openclaw_token.trim()
     const kweaverBaseUrl = values.kweaver_base_url?.trim()
-    const kweaverToken = values.kweaver_token?.trim()
 
     return {
       openclaw_address: openclawAddress,
       openclaw_token: openclawToken,
       ...(kweaverBaseUrl ? { kweaver_base_url: kweaverBaseUrl } : {}),
-      ...(kweaverBaseUrl && kweaverToken ? { kweaver_token: kweaverToken } : {}),
     }
   }
 
@@ -132,7 +125,7 @@ const InitialConfiguration = () => {
     if (step === 0) {
       return (
         <ConnectOpenClawStep
-          // loading={loading}
+          loading={loading}
           submitError={submitError}
           submitting={submitting}
           form={form}

@@ -19,7 +19,7 @@
 
 1. 执行 `npm install` 安装依赖
 2. 重命名 `.env.example` → `.env`，配置 OpenClaw 连接信息以及 OpenClaw 的 Auth Token。
-   同时配置 `KWEAVER_BASE_URL` 和 `KWEAVER_TOKEN`，用于转发 KWeaver Core 请求。
+   如需转发 KWeaver Core 请求，可额外配置 `KWEAVER_BASE_URL`。
 3. 默认使用仓库 `assets/` 目录中已提交的 Ed25519 PEM 私钥和 PEM 公钥，用于调用 OpenClaw Gateway 接口时进行签名
 4. 执行 `npm run init:agents` 初始化 OpenClaw 默认配置、builtin agents 以及 extensions
 5. 执行 `npm run build` 构建
@@ -328,12 +328,9 @@ DIP 数字员工 Web 界面
 
 | 参数 | 类型 | 说明 |
 | -- | -- | -- |
-| protocol | string | OpenClaw Gateway 协议，枚举值：`ws`、`wss` |
-| host | string | OpenClaw Gateway 主机地址 |
-| port | integer | OpenClaw Gateway 端口 |
-| token | string | 从运行时注入环境变量中读取的 Gateway Token |
+| openclaw_address | string | 完整 OpenClaw Gateway 地址；未初始化时根据 `USE_EXTERNAL_OPENCLAW` 生成外置或内置地址 |
+| openclaw_token | string | OpenClaw Gateway Token；未初始化时从挂载的 `openclaw.json` 读取 |
 | kweaver_base_url | string | 从运行时注入环境变量中读取的 KWeaver 服务地址，未配置时为空 |
-| kweaver_token | string | 从运行时注入环境变量中读取的 KWeaver Token，未配置时为空 |
 
 错误响应：`500`、`502`
 
@@ -345,8 +342,7 @@ DIP 数字员工 Web 界面
 {
   "openclaw_address": "ws://127.0.0.1:18789",
   "openclaw_token": "your-openclaw-token",
-  "kweaver_base_url": "https://kweaver.example.com",
-  "kweaver_token": "your-kweaver-token"
+  "kweaver_base_url": "https://kweaver.example.com"
 }
 ```
 
@@ -357,7 +353,6 @@ DIP 数字员工 Web 界面
 | openclaw_address | string | 是 | 完整 OpenClaw Gateway 地址，例如 `ws://127.0.0.1:18789` |
 | openclaw_token | string | 是 | OpenClaw Gateway Token |
 | kweaver_base_url | string | 否 | KWeaver 服务地址；为空时表示禁用 KWeaver 配置 |
-| kweaver_token | string | 否 | KWeaver Token；当 `kweaver_base_url` 非空时必填 |
 
 响应：`200`，无响应体。
 

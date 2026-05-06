@@ -8,6 +8,7 @@ import {
   asMessage,
   getOpenClawGatewayRuntimeConfig,
   isDevelopmentMode,
+  loadEnvFile,
   readOptionalString,
   resolveBknBackendUrl,
   resolveHydraAdminUrl
@@ -71,6 +72,36 @@ describe("env helpers", () => {
         timeoutMs: 9000
       });
     } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("loads .env from the service working directory by default", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "dip-studio-env-cwd-"));
+    const previousCwd = process.cwd();
+    const previousValue = process.env.DIP_STUDIO_CWD_ENV_TEST;
+    writeFileSync(
+      join(tempDir, ".env"),
+      "DIP_STUDIO_CWD_ENV_TEST=from-cwd\n",
+      "utf8"
+    );
+
+    try {
+      delete process.env.DIP_STUDIO_CWD_ENV_TEST;
+      process.chdir(tempDir);
+      loadEnvFile({
+        override: true,
+        forceReload: true
+      });
+
+      expect(process.env.DIP_STUDIO_CWD_ENV_TEST).toBe("from-cwd");
+    } finally {
+      process.chdir(previousCwd);
+      if (previousValue === undefined) {
+        delete process.env.DIP_STUDIO_CWD_ENV_TEST;
+      } else {
+        process.env.DIP_STUDIO_CWD_ENV_TEST = previousValue;
+      }
       rmSync(tempDir, { recursive: true, force: true });
     }
   });

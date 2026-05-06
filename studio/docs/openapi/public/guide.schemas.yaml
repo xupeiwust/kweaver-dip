@@ -32,30 +32,18 @@ components:
       type: object
       additionalProperties: false
       required:
-        - protocol
-        - host
-        - port
-        - token
+        - openclaw_address
+        - openclaw_token
       properties:
-        protocol:
+        openclaw_address:
           type: string
-          enum:
-            - ws
-            - wss
-        host:
+          description: 完整 OpenClaw Gateway 地址，例如 `ws://127.0.0.1:19001`
+        openclaw_token:
           type: string
-        port:
-          type: integer
-          minimum: 1
-        token:
-          type: string
-          description: 从运行时注入环境变量中读取的 Gateway Token
+          description: OpenClaw Gateway Token
         kweaver_base_url:
           type: string
           description: 从运行时注入环境变量中读取的 KWeaver 服务地址；为空时表示未配置
-        kweaver_token:
-          type: string
-          description: 从运行时注入环境变量中读取的 KWeaver Token；为空时表示未配置
 
     GuideInitializeRequest:
       type: object
@@ -72,9 +60,6 @@ components:
         kweaver_base_url:
           type: string
           description: KWeaver 服务地址；为空时表示禁用 KWeaver 配置
-        kweaver_token:
-          type: string
-          description: KWeaver Token；当 `kweaver_base_url` 非空时必填
     GuideInitializeResponse:
       type: object
       additionalProperties: false

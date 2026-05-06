@@ -1,5 +1,4 @@
 import type {
-  GatewayProtocol,
   GuideInitializeRequest,
   GuideInitializeResponse,
   GuideStatusResponse,
@@ -40,12 +39,10 @@ export async function mockGetGuideStatus(): Promise<GuideStatusResponse> {
 export async function mockGetOpenClawDetectedConfig(): Promise<OpenClawDetectedConfig> {
   await wait(MOCK_DELAY_MS)
 
-  const protocol: GatewayProtocol = 'ws'
   return {
-    protocol,
-    host: '127.0.0.1',
-    port: 19001,
-    token: 'mock-token-please-change',
+    openclaw_address: 'ws://127.0.0.1:19001',
+    openclaw_token: 'mock-token-please-change',
+    kweaver_base_url: 'http://bkn-backend-svc:13014',
   }
 }
 
@@ -56,8 +53,6 @@ export async function mockInitializeGuide(
 
   const openclawAddress = body.openclaw_address?.trim()
   const openclawToken = body.openclaw_token?.trim()
-  const kweaverBaseUrl = body.kweaver_base_url?.trim()
-  const kweaverToken = body.kweaver_token?.trim()
 
   // 简单校验：避免用户误点导致“看起来成功但其实没做事”
   if (!openclawAddress) {
@@ -66,11 +61,6 @@ export async function mockInitializeGuide(
 
   if (!openclawToken) {
     throw new Error('Mock 初始化失败：gateway token 不能为空')
-  }
-
-  // 与文档约束保持一致：填写 KWeaver 地址后，Token 必填
-  if (kweaverBaseUrl && !kweaverToken) {
-    throw new Error('Mock 初始化失败：填写 kweaver_base_url 后，kweaver_token 为必填')
   }
 
   const workspaceDir = '~/.openclaw-dev'

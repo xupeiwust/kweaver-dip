@@ -2,7 +2,9 @@
 
 ## 业务流程
 
-前提：本业务流程**仅适用** Studio Backend (Express) 和 OpenClaw 部署在同一节点的情况。
+### 前提
+
+- OpenClaw 的主目录（通常是 `~/.openclaw/`）挂载到 Studio 服务容器的 `/root/.openclaw/` 路径，Studio 服务可以读取到  `/root/.openclaw/openclaw.json` 配置文件。
 
 ```mermaid
 
@@ -11,6 +13,7 @@ sequenceDiagram
 participant SW as Web
 participant BE as Studio Backend (Express)
 participant OC as OpenClaw
+participant KC as KWeaver Core
 
 opt 配置 OpenClaw 连接信息
   activate BE
@@ -21,9 +24,15 @@ opt 配置 OpenClaw 连接信息
   end
 
   alt 未配置 OpenClaw 连接
-    BE ->> OC: 从 ENV 中获取 OpenClaw 配置
-    BE ->> SW: 返回配置
-    SW ->> SW: 确认配置
+      alt 使用外置 OpenClaw
+        SW ->> SW: 填充 OpenClaw 网关地址：ws://<hostIP>:19001
+      end
+      alt 使用内置 OpenClaw
+        SW ->> SW: 填充 OpenClaw 网关地址：ws://127.0.0.1:19001
+      end
+    BE ->> OC: 从 openclaw.json 中读取 gateway.auth.token 字段
+    BE ->> SW: 填充 OpenClaw 网关 Token
+    BE ->> SW: 填充 KWeaver 地址：http://bkn-backend-svc:13014
   end
 end
 
@@ -41,6 +50,9 @@ BE ->> OC: 追加环境变量到 OpenClaw 根目录下 .env
 BE ->> OC: 创建预置数字员工
 end
 ```
+## 使用外置/内置 OpenClaw
+
+使用环境变量 `USE_EXTERNAL_OPENCLAW` 来判断使用外置/内置 OpenClaw，默认为 `false`
 
 ## openclaw 命令
 
@@ -61,13 +73,12 @@ end
 Studio Backend 读取完配置后，向前端返回配置信息，用户可以在 Web 修改配置信息。配置项包括：
 
 * OpenClaw 网关连接地址
-* OpenClaw 网关 Token（不显示明文）
+* OpenClaw 网关 Token
 * KWeaver 服务地址（访问 KWeaver API 需要，可选）
-* KWeaver Token（默认禁用，如填写了 KWeaver 服务地址，则启用且必填）
 
 用户修改并确认配置后发送初始化请求到 Studio Backend， Studio Backend 执行初始化操作：
 
-1. 如果不存在 `.env` 文件，则先根据 `.env.example` 模板创建 `.env`。
+1. 如果 `.env` 文件不存在 ，则先根据 `.env.example` 模板创建 `.env`。
 2. 将初始化请求参数转换为 `.env` 中的对应参数填入。
 3. 创建 `assets/`目录，执行 OpenSSL 命令生成 Ed25519 PEM 私钥和 PEM 公钥，用于调用 OpenClaw Gateway 接口时进行签名：
 ```bash
@@ -77,7 +88,7 @@ openssl pkey -in private.pem -pubout -out public.pem
 ```
 4. 执行 `npm run init:agents` 初始化 OpenClaw 默认配置、built-in agents 以及 extensions。
 5. 初始化成功后，与 OpenClaw Gateway 建立 WebSocket 连接。
-6. 连接成功后，追加 KWEAVER_BASE_URL 和 KWEAVER_TOKEN 到 {OPENCLAW_ROOT_DIR} 目录下的 .env 文件（没有则创建）
+6. 连接成功后，写入 KWEAVER_BASE_URL 参数 `.env`
 
 #### 创建数字员工
 

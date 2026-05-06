@@ -24,10 +24,6 @@
       "kweaverBaseUrlInvalidProtocol": "KWeaver service URL must use http or https",
       "kweaverBaseUrlInvalid": "Please enter a valid KWeaver service URL (including protocol, e.g. https://example.com)",
       "kweaverBaseUrlPlaceholder": "For example: https://example.com",
-      "kweaverTokenLabel": "KWeaver token",
-      "kweaverTokenRequiredWhenBaseUrl": "KWeaver token is required after filling KWeaver service URL",
-      "kweaverTokenPlaceholder": "Please enter the KWeaver token",
-      "kweaverTokenPlaceholderDisabled": "Fill in KWeaver service URL first",
       "next": "Next"
     },
     "check": {
