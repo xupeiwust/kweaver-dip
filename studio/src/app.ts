@@ -17,6 +17,7 @@ import { createGuideRouter } from "./routes/guide";
 import { createSessionsRouter } from "./routes/sessions";
 import { createSkillsRouter } from "./routes/skills";
 import { createUserManagementRouter } from "./routes/user-management";
+import { createUserPreferenceRouter } from "./routes/user-preference";
 
 
 /**
@@ -64,6 +65,7 @@ export function createApp(options: AppOptions = {}): Express {
   app.use(createChatRouter());
   app.use(createSessionsRouter());
   app.use(createSkillsRouter());
+  app.use(createUserPreferenceRouter());
   app.use(createChannelUserRouter());
   app.use(createDigitalHumanRouter());
   app.use(createChatUploadRouter());

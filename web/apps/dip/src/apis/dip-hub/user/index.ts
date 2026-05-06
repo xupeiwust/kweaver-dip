@@ -5,8 +5,6 @@ import type { UserInfo } from './index.d'
 export type {
   RoleInfo,
   UserInfo,
-  UserPreferences,
-  UserPreferencesPutBody,
   UserRole,
 } from './index.d'
 
@@ -18,5 +16,3 @@ export type {
 export function getUserInfo(): Promise<UserInfo> {
   return get(`/api/dip-hub/v1/userinfo`)
 }
-
-export { getUserPreferences, putUserPreferences } from './preferences'

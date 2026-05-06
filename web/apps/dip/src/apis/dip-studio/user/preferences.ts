@@ -6,7 +6,7 @@ import type { UserPreferences, UserPreferencesPutBody } from './index.d'
  * OpenAPI: GET /user/preferences
  */
 export function getUserPreferences(): Promise<UserPreferences> {
-  return get(`/api/dip-hub/v1/user/preferences`)
+  return get(`/api/dip-studio/v1/user/preferences`)
 }
 
 /**
@@ -14,7 +14,7 @@ export function getUserPreferences(): Promise<UserPreferences> {
  * OpenAPI: PUT /user/preferences
  */
 export function putUserPreferences(body: UserPreferencesPutBody): Promise<UserPreferences> {
-  return put(`/api/dip-hub/v1/user/preferences`, {
+  return put(`/api/dip-studio/v1/user/preferences`, {
     body: JSON.stringify(body),
   })
 }

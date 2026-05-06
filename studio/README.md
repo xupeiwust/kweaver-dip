@@ -364,6 +364,42 @@ DIP 数字员工 Web 界面
 
 错误响应：`400`、`500`、`502`
 
+#### 获取当前用户 pinned 数字员工偏好
+
+`GET /api/dip-studio/v1/user/preferences`
+
+响应：`200 application/json`
+
+| 参数 | 类型 | 说明 |
+| -- | -- | -- |
+| pinned_digital_human_ids | string[] | 当前用户侧栏固定的数字员工 ID 列表，顺序即展示顺序 |
+
+该接口归属 Studio 域：偏好内容直接服务数字员工切换与会话入口，底层写入 Studio 专属的 `t_studio_user_preference` 表，对外接口统一落在 `/api/dip-studio/v1/`。
+
+#### 更新当前用户 pinned 数字员工偏好
+
+`PUT /api/dip-studio/v1/user/preferences`
+
+请求体示例：
+
+```json
+{
+  "pinned_digital_human_ids": ["dh-1", "dh-2"]
+}
+```
+
+请求体参数：
+
+| 参数 | 类型 | 是否必填 | 说明 |
+| -- | -- | -- | -- |
+| pinned_digital_human_ids | string[] | 是 | 当前用户侧栏固定的数字员工 ID 列表，顺序即展示顺序 |
+
+约束：
+
+- 最多固定 `8` 个数字员工。
+- 服务端会按首次出现顺序去重，并 trim 首尾空白。
+- 仅覆盖 `t_studio_user_preference.content` 中的 `pinned_digital_human_ids` 字段，不会清空其它未知偏好键。
+
 #### 获取会话列表
 
 `GET /api/dip-studio/v1/sessions`

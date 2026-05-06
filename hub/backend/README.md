@@ -126,8 +126,8 @@ open htmlcov/index.html
 
 ### 用户偏好
 
-- `GET /api/dip-hub/v1/user/preferences` - 获取当前用户偏好（含侧栏钉选数字员工 ID）
-- `PUT /api/dip-hub/v1/user/preferences` - 全量更新钉选数字员工 ID 列表
+- `GET /api/dip-hub/v1/user/preferences` - 获取当前用户偏好（底层读取 `t_studio_user_preference`，含侧栏钉选数字员工 ID）
+- `PUT /api/dip-hub/v1/user/preferences` - 全量更新钉选数字员工 ID 列表（底层写入 `t_studio_user_preference`）
 
 ### 应用管理
 
@@ -164,4 +164,3 @@ mypy src
 ## 项目结构
 
 详细的项目结构说明请查看 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)。
-

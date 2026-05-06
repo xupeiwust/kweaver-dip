@@ -16,10 +16,11 @@ from src.ports.user_preference_port import UserPreferencePort
 logger = logging.getLogger(__name__)
 
 _CONTENT_KEY_PINNED_DH = "pinned_digital_human_ids"
+_TABLE_STUDIO_USER_PREFERENCE = "t_studio_user_preference"
 
 
 class UserPreferenceAdapter(UserPreferencePort):
-    """将用户偏好存入 t_user_preference.content（JSON 文本）。"""
+    """将用户偏好存入 t_studio_user_preference.content（JSON 文本）。"""
 
     def __init__(self, settings: Settings):
         self._settings = settings
@@ -52,7 +53,7 @@ class UserPreferenceAdapter(UserPreferencePort):
         with pool.connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
-                    "SELECT content FROM t_user_preference WHERE user_id = %s",
+                    f"SELECT content FROM {_TABLE_STUDIO_USER_PREFERENCE} WHERE user_id = %s",
                     (user_id,),
                 )
                 row = cursor.fetchone()
@@ -83,8 +84,8 @@ class UserPreferenceAdapter(UserPreferencePort):
         with pool.connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
-                    """
-                    INSERT INTO t_user_preference (user_id, content)
+                    f"""
+                    INSERT INTO {_TABLE_STUDIO_USER_PREFERENCE} (user_id, content)
                     VALUES (%s, %s)
                     ON DUPLICATE KEY UPDATE content = VALUES(content)
                     """,
