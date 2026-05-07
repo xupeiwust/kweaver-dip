@@ -11,9 +11,8 @@ import {
   normalizePinnedDigitalHumanId,
   type PinnedDigitalHumansLogic
 } from "../logic/pinned-digital-humans";
-import {
-  DefaultPinnedDigitalHumansMysqlStore
-} from "../infra/pinned-digital-humans-mysql-store";
+import { createStudioDatabasePool } from "../infra/mariadb-client";
+import { DefaultPinnedDigitalHumansMysqlStore } from "../infra/pinned-digital-humans-mysql-store";
 import { getEnv } from "../utils/env";
 import { digitalHumanLogic } from "./digital-human";
 
@@ -51,14 +50,16 @@ export const PINNED_DIGITAL_HUMANS_PATH =
   "/api/dip-studio/v1/pinned-digital-humans";
 
 const env = getEnv();
+const studioDatabasePool = createStudioDatabasePool({
+  host: env.dbHost,
+  port: env.dbPort,
+  user: env.dbUser,
+  password: env.dbPassword,
+  database: env.dbName,
+  connectionLimit: 10
+});
 const pinnedDigitalHumansLogic = new DefaultPinnedDigitalHumansLogic(
-  new DefaultPinnedDigitalHumansMysqlStore({
-    host: env.dbHost,
-    port: env.dbPort,
-    user: env.dbUser,
-    password: env.dbPassword,
-    database: env.dbName
-  }),
+  new DefaultPinnedDigitalHumansMysqlStore(studioDatabasePool),
   digitalHumanLogic
 );
 

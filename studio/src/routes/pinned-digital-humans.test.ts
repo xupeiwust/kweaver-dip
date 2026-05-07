@@ -1,6 +1,16 @@
 import type { NextFunction, Request, Response } from "express";
 import { describe, expect, it, vi } from "vitest";
 
+/**
+ * Default `pinned-digital-humans` wires `digitalHumanLogic`; importing real `./digital-human`
+ * loads OpenClaw device keys. Tests inject router dependencies and never use that default.
+ */
+vi.mock("./digital-human", () => ({
+  digitalHumanLogic: {
+    getDigitalHuman: vi.fn()
+  }
+}));
+
 import {
   createPinnedDigitalHumansRouter,
   PINNED_DIGITAL_HUMANS_PATH,

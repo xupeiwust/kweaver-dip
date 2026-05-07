@@ -1,5 +1,3 @@
-CREATE DATABASE IF NOT EXISTS kweaver DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 USE `kweaver`;
 
 CREATE TABLE IF NOT EXISTS `t_studio_user_preference` (

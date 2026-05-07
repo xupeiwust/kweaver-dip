@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 
-import { createPool, type Pool, type RowDataPacket } from "mysql2/promise";
+import { type Pool, type RowDataPacket } from "mysql2/promise";
 
 import type { PinnedDigitalHumansStore } from "../logic/pinned-digital-humans";
 import type { PinnedDigitalHumanIdsStored } from "../types/pinned-digital-humans";
@@ -11,36 +11,6 @@ import type { PinnedDigitalHumanIdsStored } from "../types/pinned-digital-humans
 export const PINNED_DIGITAL_HUMAN_IDS_COLUMN = "pinned_digital_human_ids";
 
 export const STUDIO_USER_PREFERENCE_TABLE = "t_studio_user_preference";
-
-/**
- * MySQL connection options for {@link DefaultPinnedDigitalHumansMysqlStore}.
- */
-export interface PinnedDigitalHumansMysqlStoreOptions {
-  /**
-   * Database host name.
-   */
-  host: string;
-
-  /**
-   * Database port number.
-   */
-  port: number;
-
-  /**
-   * Database user name.
-   */
-  user: string;
-
-  /**
-   * Database user password.
-   */
-  password: string;
-
-  /**
-   * Database schema name.
-   */
-  database: string;
-}
 
 /**
  * Database row shape for `t_studio_user_preference`.
@@ -54,28 +24,17 @@ interface StudioPreferenceRow extends RowDataPacket {
  */
 export class DefaultPinnedDigitalHumansMysqlStore implements PinnedDigitalHumansStore {
   /**
-   * Shared connection pool.
+   * Shared connection pool (typically from {@link createStudioDatabasePool}).
    */
   private readonly pool: Pool;
 
   /**
-   * Creates the store with one MySQL connection pool.
+   * Creates the store using an existing MariaDB pool.
    *
-   * @param options Static database connection options.
+   * @param pool Shared pool, typically from `./mariadb-client` `createStudioDatabasePool`.
    */
-  public constructor(options: PinnedDigitalHumansMysqlStoreOptions) {
-    this.pool = createPool({
-      host: options.host,
-      port: options.port,
-      user: options.user,
-      password: options.password,
-      database: options.database,
-      waitForConnections: true,
-      connectionLimit: 10,
-      maxIdle: 10,
-      idleTimeout: 60_000,
-      queueLimit: 0
-    });
+  public constructor(pool: Pool) {
+    this.pool = pool;
   }
 
   /**
