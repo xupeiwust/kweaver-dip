@@ -4,7 +4,7 @@ import { memo, useCallback } from 'react'
 import AutoSizer from 'react-virtualized-auto-sizer'
 import type { DigitalHuman } from '@/apis'
 import ScrollBarContainer from '../ScrollBarContainer'
-import EmployeeCard from './EmployeeCard'
+import EmployeeCard, { type EmployeeCardTrailingOpts } from './EmployeeCard'
 import { computeColumnCount, gap } from './utils'
 
 interface DigitalHumanListProps {
@@ -13,7 +13,7 @@ interface DigitalHumanListProps {
   /** 卡片点击回调 */
   onCardClick?: (digitalHuman: DigitalHuman) => void
   /** 卡片右上角自定义区域（由父组件渲染，如钉选按钮） */
-  cardTrailing?: (digitalHuman: DigitalHuman) => ReactNode
+  cardTrailing?: (digitalHuman: DigitalHuman, opts: EmployeeCardTrailingOpts) => ReactNode
 }
 
 /**
@@ -32,7 +32,7 @@ const DigitalHumanList: React.FC<DigitalHumanListProps> = ({
           <EmployeeCard
             digitalHuman={digitalHuman}
             width={width}
-            cardTrailing={cardTrailing?.(digitalHuman)}
+            cardTrailing={cardTrailing}
             onCardClick={(digitalHuman) => onCardClick?.(digitalHuman)}
           />
         </Col>

@@ -7,6 +7,10 @@ import DigitalHumanSetting from '@/components/DigitalHumanSetting'
 import { useDigitalHumanStore } from '@/components/DigitalHumanSetting/digitalHumanStore'
 import IconFont from '@/components/IconFont'
 import WorkPlanList from '@/components/WorkPlanList'
+import {
+  SIDEBAR_REOPEN_DH_SESSION_LOCATION_KEY,
+  type SidebarReopenDhSessionLocationState,
+} from '@/routes/types'
 import { useUserInfoStore } from '@/stores/userInfoStore'
 import { resolveDigitalHumanIconSrc } from '@/utils/digital-human/resolveDigitalHumanIcon'
 import { formatTimeSlash } from '@/utils/handle-function/FormatTime'
@@ -42,6 +46,18 @@ const Details = () => {
   const [activeTab, setActiveTab] = useState<DigitalHumanDetailTab>('session')
   const isBknCreator = digitalHumanId === BKN_CREATOR_ID
   const canEnterDetail = !isAdmin || isBknCreator
+
+  const reopenSessionStamp = useMemo(() => {
+    const raw = location.state as SidebarReopenDhSessionLocationState | null | undefined
+    const v = raw?.[SIDEBAR_REOPEN_DH_SESSION_LOCATION_KEY]
+    return typeof v === 'number' && v > 0 ? v : 0
+  }, [location.state])
+
+  useEffect(() => {
+    if (reopenSessionStamp > 0) {
+      setActiveTab('session')
+    }
+  }, [reopenSessionStamp])
 
   /** 管理员走全页配置 */
   useLayoutEffect(() => {
@@ -203,7 +219,10 @@ const Details = () => {
       )}
       {activeTab === 'session' && (
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          <Conversation digitalHumanId={digitalHumanId} />
+          <Conversation
+            key={`dh-session-${digitalHumanId}-${reopenSessionStamp}`}
+            digitalHumanId={digitalHumanId}
+          />
         </div>
       )}
       {activeTab === 'config' && (

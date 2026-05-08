@@ -1,6 +1,6 @@
 import { message } from 'antd'
-import { create } from 'zustand'
 import intl from 'react-intl-universal'
+import { create } from 'zustand'
 import type { SidebarPinnedDigitalHuman } from '@/apis/dip-studio/user'
 import {
   deleteSidebarPinnedDigitalHuman,
@@ -8,18 +8,18 @@ import {
   postSidebarPinnedDigitalHumans,
 } from '@/apis/dip-studio/user/preferences'
 
-/** 与 dip-studio {@link MAX_PINNED_DIGITAL_HUMANS} 对齐，用于友好文案占位符 */
-const PINNED_DIGITAL_HUMAN_SIDEBAR_MAX = 8
+/** 与服务端 pinned-digital-humans（参见 MAX_PINNED_DIGITAL_HUMANS）一致 */
+export const MAX_PINNED_SIDEBAR_DIGITAL_HUMANS = 8
+
 /** Studio POST pinned-digital-humans 超出上限时的业务错误码 */
 const PINNED_DIGITAL_HUMAN_LIMIT_CODE = 'DipStudio.PinnedDigitalHumanLimit'
 
 function resolvePinnedDigitalHumansApiMessage(error: unknown): string | undefined {
   if (!error || typeof error !== 'object') return undefined
-  const apiCode =
-    'code' in error ? String((error as { code?: unknown }).code ?? '') : ''
+  const apiCode = 'code' in error ? String((error as { code?: unknown }).code ?? '') : ''
   if (apiCode === PINNED_DIGITAL_HUMAN_LIMIT_CODE) {
     return intl.get('sider.pinnedDigitalHumans.pinLimitReached', {
-      max: PINNED_DIGITAL_HUMAN_SIDEBAR_MAX,
+      max: MAX_PINNED_SIDEBAR_DIGITAL_HUMANS,
     })
   }
   if ('description' in error) {

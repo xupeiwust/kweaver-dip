@@ -31,6 +31,15 @@ export type RouteSidebarMode = 'menu' | 'hidden' | 'entry-only'
 
 export const WENSHU_APP_KEY = 'cedb529407c345b1a27317baefa62800'
 
+/**
+ * 路由 `location.state` 键：`/studio/digital-human/:id` 详情页会话区用其刷新 key；
+ * 侧栏对已选钉选员工再次点击时写入 `Date.now()`，等价于新开会话。
+ */
+export const SIDEBAR_REOPEN_DH_SESSION_LOCATION_KEY = 'sidebarReopenSessionAt' as const
+
+export type SidebarReopenDhSessionLocationState = {
+  [SIDEBAR_REOPEN_DH_SESSION_LOCATION_KEY]?: number
+}
 /** 布局配置 */
 export interface LayoutConfig {
   /** 是否展示顶栏 */

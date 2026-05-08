@@ -30,11 +30,13 @@ class-443:
 
 depServices:
   rds:
+    system_id: ""
     host: mariadb-proton-mariadb.resource.svc.cluster.local
     port: 3306
     database: "kweaver"
-    user: "adp"
+    user: "dip"
     password: "3Ci72ILMVn"
+    type: "MariaDB"
 
 ingress:
   enabled: true
@@ -60,16 +62,6 @@ studio:
   OpenClawHostPath: /root/.openclaw/
   KWeaverHydraAdminURL: http://hydra-admin:4445
   useExternalOpenClaw: false
-
-depServices:
-  rds:
-    system_id: ""
-    host: mariadb-proton-mariadb.resource.svc.cluster.local
-    port: 3306
-    database: "kweaver"
-    user: "dip"
-    password: "3Ci72ILMVn"
-    type: "MariaDB"
 
 resources:
   init:

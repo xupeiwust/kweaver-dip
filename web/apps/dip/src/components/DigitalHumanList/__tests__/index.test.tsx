@@ -25,10 +25,17 @@ vi.mock('../EmployeeCard', () => ({
   default: (props: {
     digitalHuman: { id: string; name: string }
     width: number
-    cardTrailing?: React.ReactNode
+    cardTrailing?: (
+      dh: { id: string; name: string },
+      opts: { cardHovered: boolean },
+    ) => React.ReactNode
     onCardClick?: (digitalHuman: { id: string; name: string }) => void
   }) => {
     employeeCardMock(props)
+    const trailing =
+      typeof props.cardTrailing === 'function'
+        ? props.cardTrailing(props.digitalHuman, { cardHovered: false })
+        : null
     return (
       <button
         type="button"
@@ -36,6 +43,7 @@ vi.mock('../EmployeeCard', () => ({
         onClick={() => props.onCardClick?.(props.digitalHuman)}
       >
         {props.digitalHuman.name}
+        {trailing}
       </button>
     )
   },
@@ -47,7 +55,9 @@ describe('DigitalHumanList/index', () => {
       { id: '1', name: '小助手A', creature: 'A 简介' },
       { id: '2', name: '小助手B', creature: 'B 简介' },
     ]
-    const cardTrailing = vi.fn((digitalHuman: { id: string }) => <span data-testid={`t-${digitalHuman.id}`} />)
+    const cardTrailing = vi.fn((digitalHuman: { id: string }) => (
+      <span data-testid={`t-${digitalHuman.id}`} />
+    ))
 
     render(<DigitalHumanList digitalHumans={list as never[]} cardTrailing={cardTrailing} />)
 
@@ -56,13 +66,19 @@ describe('DigitalHumanList/index', () => {
     expect(screen.getByTestId('employee-card-2')).toBeInTheDocument()
 
     expect(cardTrailing).toHaveBeenCalledTimes(2)
+    expect(cardTrailing).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: '1' }), {
+      cardHovered: false,
+    })
+    expect(cardTrailing).toHaveBeenNthCalledWith(2, expect.objectContaining({ id: '2' }), {
+      cardHovered: false,
+    })
     expect(employeeCardMock).toHaveBeenCalledTimes(2)
     expect(employeeCardMock).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
         digitalHuman: expect.objectContaining({ id: '1', name: '小助手A' }),
         width: 400,
-        cardTrailing: expect.anything(),
+        cardTrailing,
       }),
     )
   })

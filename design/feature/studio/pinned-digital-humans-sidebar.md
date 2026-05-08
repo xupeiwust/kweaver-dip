@@ -56,7 +56,7 @@
 | 规则 | 说明 |
 |------|------|
 | **列表顺序** | 侧栏自上而下为**按添加时间倒序**：**最近**钉选/固定的项显示在**最上**；持久化数组 `pinned_digital_human_ids` 的**第 1 个元素**对应侧栏**最上**一格，以此类推。本期不提供用户拖拽排序。 |
-| **「新会话」语义** | 从侧栏点进某员工时，**不延续**用户此前在**另一员工**下未完成会话的 `sessionKey`；与从首页选员工进会话的直觉一致。若已在会话页仅切换 `employee`，实现上必须有**显式会话重置机制**（如重建会话容器实例、清理当前线程态或注入新的 `conversationKey`），以保证语义上等同「用该员工新开对话」；不能仅依赖 query 变化碰巧触发。 |
+| **「新会话」语义** | 从侧栏点进某员工时，**不延续**用户此前在**另一员工**下未完成会话的 `sessionKey`。产品上有两种进入会话的路由（见 §2.1）：**全局会话页**使用 `?employee=` query；**钉选侧栏**使用**数字员工详情页**路径 `/studio/digital-human/:id`（会话 Tab 内 `DipChatKit`）。两者均须通过**路由或容器级切换**进入该员工上下文，不得错误复用其它员工的线程态；全局会话页内若仅变更 `employee` query，仍须有**显式会话重置机制**（见 `Conversation` 实现）。 |
 | **幂等** | 同一员工被多次「固定」不应产生重复条目。 |
 | **上限** | 固定数量上限为 **8**；该值以侧栏可稳定展示与快速切换为准，而非存储能力上限。超出时需**明确提示**用户，而非静默失败。 |
 | **失效数据** | 偏好里曾钉选、但数字员工已删除或档案不可加载的 id：**不在**钉选接口的 `pinned_digital_humans` 中返回；服务端在 `GET`/`POST`/`DELETE` 组合或变更时**剔除**并在存储中**修剪**对应的 id，避免占上限或需单独「失效行」交互（与 §2.6 对齐）。 |
@@ -67,7 +67,7 @@
 
 ## 1.6 体验与可访问性（需求层）
 
-- **视觉**：与侧栏内「工作计划」「历史会话」等区块**层级协调**（标题、间距、hover），不显得像临时补丁。  
+- **视觉**：与侧栏内「工作计划」「历史会话」等区块**层级协调**（间距、hover），不显得像临时补丁；钉选列表**不设**与主导航菜单项重复的独立「数字员工」标题，避免与侧栏 `StudioMenuSection` 中「数字员工」入口文案叠读。  
 - **可访问性**：关键操作为键盘/读屏可用（具体 aria 由实现补齐）。  
 
 ---
@@ -102,8 +102,9 @@
 
 | 域 | 现状要点 | 对实现的约束 |
 |----|----------|----------------|
-| 会话入口 | `Home` → `/studio/conversation?employee=…`；`Conversation` 将 `employee` 传给 `DipChatKit`。 | 侧栏固定项点击须**对齐**同一查询参数契约。 |
-| 侧栏 | `HomeSider` / `AdminSider` 在具备 studio 模块时结构对称；含 `StudioMenuSection`、工作计划块、历史会话块等。 | 新分区须**两处**同时接入。 |
+| 全局会话入口 | `Home` 提交后 → `/studio/conversation?employee=…`；`Conversation` 将 query `employee` 传给 `DipChatKit`。 | 与钉选侧栏**不是同一路由**；首页/全局会话继续使用 `employee` query 契约。 |
+| 钉选会话入口 | **`/studio/digital-human/:digitalHumanId`**（路由 `digital-human-detail`，`DigitalHumanDetail` 会话 Tab 内 `DipChatKit`，`assignEmployeeValue` 绑定 id）。完整 URL 形如 `{BASE_PATH}/studio/digital-human/<uuid>`（如 `/dip-hub/studio/digital-human/…`）。 | 侧栏钉选行点击须 **`navigate('/studio/digital-human/<id>')`**，**不带** `sessionKey`；不与全局会话页的 `?employee=` 混用。当前项高亮依据 `location.pathname` 匹配该段路径（排除 `/setting` 等子路径）。 |
+| 侧栏 | `HomeSider` / `AdminSider` 在具备 studio 模块时结构对称；含 `StudioMenuSection`、钉选列表、工作计划块、历史会话块等。 | 钉选分区须**两处**同时接入。 |
 | 微应用钉选 | `StoreMenuSection` + `preferenceStore`：applications 列表过滤 `pinned`，单项 `PUT …/applications/{key}/pinned`。 | 数字员工**不能**复用该 API（资源为应用安装实例，非「每用户员工列表」）；可**复用交互范式**（钉/拔钉、token 后拉取）。 |
 
 ---
@@ -221,23 +222,24 @@ flowchart LR
 
 ### 2.4.2 点击侧栏固定项
 
-1. `navigate('/studio/conversation?employee=<id>')`，**不带** `sessionKey`。  
-2. 路由层或聊天容器层在检测到“来源于 pinned 员工切换”后，必须显式**重置当前会话态**，保证不会复用上一员工的线程上下文。  
-3. 由现有 `Conversation` / `DipChatKit` 承接；需回归「仅 query 变更」时的 reset 行为。
+1. `navigate('/studio/digital-human/<id>')`，**不在钉选点击时预置**上一员工的 `sessionKey`（会话态由详情页内 `DipChatKit` 管理；若实现会在本路由下将 `sessionKey` 同步到 URL，以产品行为为准）。  
+2. 由 `DigitalHumanDetail`（含「会话」Tab）与内嵌 `DipChatKit`（`assignEmployeeValue=<id>`）承接；从其它员工详情或全局会话切到本路径时，应通过**路由节点切换**避免误复用上一员工上下文。  
+3. **不要**将钉选误写为 `navigate('/studio/conversation?employee=<id>')`：后者服务于**全局会话**入口（如首页），与钉选详情路由并存。
 
 ```mermaid
 sequenceDiagram
     participant User as 用户
-    participant Sider as 侧栏固定项
+    participant Sider as 侧栏钉选行
     participant Router as 路由层
-    participant Chat as Conversation / DipChatKit
+    participant Detail as DigitalHumanDetail
+    participant Chat as DipChatKit
 
     User->>Sider: 点击 pinned 数字员工 A
-    Sider->>Router: navigate("?employee=A")
-    Router->>Chat: 传入 employee=A
-    Chat->>Chat: 显式 reset 会话态
-    Chat->>Chat: 清理旧线程上下文 / 重建容器
-    Chat-->>User: 以 A 身份进入新会话就绪态
+    Sider->>Router: navigate("/studio/digital-human/A")
+    Router->>Detail: 匹配 digital-human-detail
+    Detail->>Chat: 会话 Tab，assignEmployeeValue=A
+    Chat->>Chat: 以 A 为员工身份就绪（不延续它员工 thread）
+    Chat-->>User: 可对话态
 ```
 
 ### 2.4.3 固定 / 取消固定
@@ -256,9 +258,9 @@ sequenceDiagram
 | 模块 | 职责 |
 |------|------|
 | 状态层 | 缓存 `pinned_digital_humans` 快照；通过 `POST`（单 id 置顶）与 `DELETE` 维护列表；与 token 生命周期对齐。 |
-| 侧栏区块 | 列表 UI、空态隐藏、折叠与 `WorkPlanSection` 等一致。 |
+| 侧栏区块 | 列表 UI、空态隐藏、折叠与 `WorkPlanSection` 等一致；与主导航不重名标题。 |
 | 固定入口 | 列表或会话内至少一处；调状态层。 |
-| 路由 | 只消费 `employee`，不持久化偏好。 |
+| 路由 | **钉选**：`/studio/digital-human/:id`；**全局会话**：`Conversation` 消费 `employee` query。偏好不写入 URL。 |
 
 **建议插入位置**：`StudioMenuSection` **之下**、工作计划区**之上**；两处侧栏保持一致。
 
@@ -296,7 +298,7 @@ flowchart TD
 |------|------|
 | 服务 | 单 id 校验、上限 **8**、`GET`/`POST`/`DELETE` 组合时剔除无效 id 并修剪存储。 |
 | 前端状态 | pin 幂等、unpin 一致、换 token 重拉、写后按服务端快照覆盖本地。 |
-| E2E / 手工 | URL `employee` 正确；无错误续用旧 `sessionKey`；切换 pinned 员工后会话容器确实 reset。 |
+| E2E / 手工 | **钉选**：地址栏为 `/studio/digital-human/<id>`（或带 `BASE_PATH` 前缀），而非 `…/conversation?employee=`；切换不同 pinned 员工时不应错误沿用上一员工线程。**全局会话**：`?employee=` 与 `sessionKey` 一致性按 `Conversation` 页现有逻辑回归。 |
 | 异常数据 | 无效钉选 id 由服务端在钉选接口侧过滤；侧栏不出现「仅 id、无档案」占位行；名额不被脏 id 占用。 |
 | 并发 | 两端近同时编辑时接受最后写入覆盖，但成功写入后 UI 必须回显服务端最终结果。 |
 | 回归 | `HomeSider` / `AdminSider` 行为一致；折叠布局。 |

@@ -572,7 +572,7 @@ const AiPromptInput: React.FC<AiPromptInputProps> = ({
       items.push({
         type: 'group',
         key: 'mention_group_employee',
-        label: intl.get('aiPromptInput.employeeMentionGroup').d('我的数字员工'),
+        label: intl.get('aiPromptInput.employeeMentionGroup').d('数字员工'),
         children: employeeOptions.map((item, index) => buildSuggestionOptionItem(item, index)),
       })
     }

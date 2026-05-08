@@ -1,4 +1,3 @@
-import { PushpinFilled, PushpinOutlined } from '@ant-design/icons'
 import { Button, message, Spin, Tooltip } from 'antd'
 import clsx from 'clsx'
 import { memo, useEffect, useRef, useState } from 'react'
@@ -10,7 +9,10 @@ import Empty from '@/components/Empty'
 import IconFont from '@/components/IconFont'
 import SearchInput from '@/components/SearchInput'
 import { useListService } from '@/hooks/useListService'
-import { usePinnedDigitalHumansStore } from '@/stores/pinnedDigitalHumansStore'
+import {
+  MAX_PINNED_SIDEBAR_DIGITAL_HUMANS,
+  usePinnedDigitalHumansStore,
+} from '@/stores/pinnedDigitalHumansStore'
 import { useUserInfoStore } from '@/stores/userInfoStore'
 
 const Management = () => {
@@ -120,33 +122,61 @@ const Management = () => {
       <DigitalHumanList
         digitalHumans={digitalHumans}
         onCardClick={handleCardClick}
-        cardTrailing={(digitalHuman) => {
+        cardTrailing={(digitalHuman, { cardHovered }) => {
           const pinned = pinnedDigitalHumans.some((row) => row.id === digitalHuman.id)
-          const pinLabel = intl.get('digitalHuman.management.menuPinSidebar')
-          const unpinLabel = intl.get('digitalHuman.management.menuUnpinSidebar')
+          const atLimit = pinnedDigitalHumans.length >= MAX_PINNED_SIDEBAR_DIGITAL_HUMANS
+          const pinDisabled = !pinned && atLimit
+          const pinTooltip = intl.get('digitalHuman.management.cardPinSidebarTooltip')
+          const unpinTooltip = intl.get('digitalHuman.management.cardUnpinSidebarTooltip')
+          const limitTooltip = intl.get('digitalHuman.management.cardPinSidebarLimitTooltip', {
+            max: MAX_PINNED_SIDEBAR_DIGITAL_HUMANS,
+          })
+
+          const pinBtnClass = clsx(
+            'w-8 h-8 inline-flex items-center justify-center rounded-md border-0 transition-colors shrink-0',
+            'text-[rgba(0,0,0,0.45)]',
+            'hover:bg-[#F5F5F5]',
+            'disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent',
+          )
+
+          if (pinned) {
+            return (
+              <Tooltip title={unpinTooltip} placement="bottom">
+                <button
+                  type="button"
+                  aria-pressed
+                  aria-label={unpinTooltip}
+                  className={clsx(pinBtnClass, 'cursor-pointer')}
+                  onClick={() => {
+                    void unpinSidebarDigitalHuman(digitalHuman.id)
+                  }}
+                >
+                  <IconFont type="icon-solid-pin" className="text-sm" aria-hidden />
+                </button>
+              </Tooltip>
+            )
+          }
+
+          if (!cardHovered) {
+            return <div className="w-8 h-8 shrink-0" aria-hidden />
+          }
+
           return (
-            <Tooltip title={pinned ? unpinLabel : pinLabel}>
-              <button
-                type="button"
-                aria-pressed={pinned}
-                aria-label={pinned ? unpinLabel : pinLabel}
-                className={clsx(
-                  'w-8 h-8 flex items-center justify-center rounded-md transition-colors border-0 cursor-pointer',
-                  pinned
-                    ? 'text-[var(--dip-primary-color)] bg-[rgba(22,119,255,0.06)] hover:bg-[rgba(22,119,255,0.12)]'
-                    : 'bg-transparent text-[var(--dip-text-color-45)] hover:text-[var(--dip-primary-color)] hover:bg-[--dip-hover-bg-color]',
-                )}
-                onClick={() => {
-                  if (pinned) void unpinSidebarDigitalHuman(digitalHuman.id)
-                  else void pinSidebarDigitalHuman(digitalHuman.id)
-                }}
-              >
-                {pinned ? (
-                  <PushpinFilled className="text-base" aria-hidden />
-                ) : (
-                  <PushpinOutlined className="text-base" aria-hidden />
-                )}
-              </button>
+            <Tooltip title={pinDisabled ? limitTooltip : pinTooltip} placement="bottom">
+              <span className={clsx('inline-flex', pinDisabled && 'cursor-not-allowed')}>
+                <button
+                  type="button"
+                  aria-pressed={false}
+                  aria-label={pinDisabled ? limitTooltip : pinTooltip}
+                  disabled={pinDisabled}
+                  className={clsx(pinBtnClass, !pinDisabled && 'cursor-pointer')}
+                  onClick={() => {
+                    void pinSidebarDigitalHuman(digitalHuman.id)
+                  }}
+                >
+                  <IconFont type="icon-pin" className="text-base" aria-hidden />
+                </button>
+              </span>
             </Tooltip>
           )
         }}

@@ -8,21 +8,22 @@ import AppIcon from '../AppIcon'
 import IconFont from '../IconFont'
 import { cardHeight } from './utils'
 
+export interface EmployeeCardTrailingOpts {
+  cardHovered: boolean
+}
+
 interface EmployeeCardProps {
   digitalHuman: DigitalHuman
   width: number
   /** 卡片右上角自定义区域（如侧栏钉选按钮）；不传则不展示 */
-  cardTrailing?: ReactNode
+  cardTrailing?: (digitalHuman: DigitalHuman, opts: EmployeeCardTrailingOpts) => ReactNode
   /** 卡片菜单点击回调 */
   onCardClick?: (digitalHuman: DigitalHuman) => void
 }
 
-const EmployeeCard: React.FC<EmployeeCardProps> = ({
-  digitalHuman,
-  cardTrailing,
-  onCardClick,
-}) => {
+const EmployeeCard: React.FC<EmployeeCardProps> = ({ digitalHuman, cardTrailing, onCardClick }) => {
   const [hovered, setHovered] = useState(false)
+  const trailing = cardTrailing?.(digitalHuman, { cardHovered: hovered })
   const avatarSrc = resolveDigitalHumanIconSrc(digitalHuman.icon_id)
   const ext = digitalHuman as DigitalHuman & {
     skills?: unknown[]
@@ -79,7 +80,8 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
             {digitalHuman.creature || intl.get('digitalHuman.card.noBio')}
           </p>
         </div>
-        {cardTrailing ? (
+        {trailing ? (
+          // biome-ignore lint/a11y/noStaticElementInteractions: 右上角操作区需阻止冒泡，避免点击钉选等按钮时触发整张卡片跳转
           <div
             className="flex-shrink-0"
             onClick={(e) => {
@@ -87,7 +89,7 @@ const EmployeeCard: React.FC<EmployeeCardProps> = ({
             }}
             role="presentation"
           >
-            {cardTrailing}
+            {trailing}
           </div>
         ) : null}
       </div>
