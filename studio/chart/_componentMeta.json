@@ -1,5 +1,10 @@
 {
   "name": "dip-studio",
   "description": "DIP Studio with OpenClaw gateway sidecar",
-  "type": "helm-chart"
+  "type": "helm-chart",
+  "dependence": [
+    {
+      "name": "rds"
+    }
+  ]
 }

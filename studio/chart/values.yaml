@@ -28,6 +28,14 @@ service:
 class-443:
   ingressClass: 'class-443'
 
+depServices:
+  rds:
+    host: mariadb-proton-mariadb.resource.svc.cluster.local
+    port: 3306
+    database: "kweaver"
+    user: "adp"
+    password: "3Ci72ILMVn"
+
 ingress:
   enabled: true
   path: /api/dip-studio

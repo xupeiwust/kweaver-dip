@@ -9,3 +9,8 @@ data:
   USE_EXTERNAL_OPENCLAW: {{ .Values.studio.useExternalOpenClaw | quote }}
   MCP_HOST: {{ .Values.studio.mcpHost | quote }}
   MCP_PORT: {{ .Values.studio.mcpPort | quote }}
+  DB_HOST: {{ .Values.depServices.rds.host | quote }}
+  DB_PORT: {{ .Values.depServices.rds.port | quote }}
+  DB_USER: {{ .Values.depServices.rds.user | quote }}
+  DB_PASSWORD: {{ .Values.depServices.rds.password | quote }}
+  DB_NAME: {{ .Values.depServices.rds.database | quote }}
