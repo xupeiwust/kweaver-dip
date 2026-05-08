@@ -19,12 +19,12 @@ describe("buildTemplate", () => {
         name: "A",
         creature: "B",
         soul: "C",
-        bkn: [{ name: "n", url: "u" }]
+        bkn: [{ name: "n", id: "u" }]
       })
     ).toEqual({
       identity: { name: "A", creature: "B", icon_id: undefined },
       soul: "C",
-      bkn: [{ name: "n", url: "u" }]
+      bkn: [{ name: "n", id: "u" }]
     });
   });
 
@@ -37,14 +37,14 @@ describe("mergeTemplatePatch", () => {
   const base = {
     identity: { name: "N", creature: "C" },
     soul: "s",
-    bkn: [{ name: "x", url: "y" }]
+    bkn: [{ name: "x", id: "y" }]
   };
 
   it("merges only provided keys", () => {
     expect(mergeTemplatePatch(base, { name: "New" })).toEqual({
       identity: { name: "New", creature: "C" },
       soul: "s",
-      bkn: [{ name: "x", url: "y" }]
+      bkn: [{ name: "x", id: "y" }]
     });
   });
 
@@ -114,7 +114,7 @@ describe("mergeFilesToTemplate", () => {
   it("parses BKN table from soul", () => {
     const soul = `Text\n\n## 业务知识网络\n\n| 名称 | 地址 |\n|------|------|\n| Doc | https://x |\n`;
     const t = mergeFilesToTemplate("- Name: C\n", soul);
-    expect(t.bkn).toEqual([{ name: "Doc", url: "https://x" }]);
+    expect(t.bkn).toEqual([{ name: "Doc", id: "https://x" }]);
   });
 });
 
@@ -138,11 +138,11 @@ describe("renderIdentityMarkdown / renderSoulMarkdown", () => {
     expect(md).toContain("- Creature: Y");
   });
 
-  it("renders soul and BKN table from de_agent_soul template", () => {
+  it("renders soul without embedding BKN scope into de_agent_soul template", () => {
     const md = renderSoulMarkdown({
       identity: { name: "X" },
       soul: "body",
-      bkn: [{ name: "a", url: "b" }]
+      bkn: [{ name: "a", id: "b" }]
     });
     expect(md).toContain("# 👤 角色定义");
     expect(md).toContain("> body");
@@ -155,7 +155,7 @@ describe("renderIdentityMarkdown / renderSoulMarkdown", () => {
     expect(md).toContain("不允许查询其他业务知识网络");
     expect(md).not.toContain("如果用户问题可能和以下的业务知识网络有关系");
     expect(md).not.toContain("请使用kweaver-core技能先从业务网络中查询相关信息");
-    expect(md).toContain("> | a | b |");
+    expect(md).not.toContain("> | a | b |");
     expect(md).toContain("## 归档与计划技能");
     expect(md).toContain("archive-protocol");
     expect(md).toContain("schedule-plan");
@@ -203,31 +203,29 @@ describe("renderIdentityMarkdown / renderSoulMarkdown", () => {
     expect(t.soul).toBe("纯角色一句");
   });
 
-  it("dedupes identical BKN rows", () => {
+  it("does not round-trip BKN rows through generated SOUL template", () => {
     const md = renderSoulMarkdown({
       identity: { name: "n" },
       soul: "s",
       bkn: [
-        { name: "企业知识库", url: "https://kb.example.com" },
-        { name: "企业知识库", url: "https://kb.example.com" }
+        { name: "企业知识库", id: "https://kb.example.com" },
+        { name: "企业知识库", id: "https://kb.example.com" }
       ]
     });
     const back = mergeFilesToTemplate("- Name: n\n", md);
-    expect(back.bkn).toEqual([
-      { name: "企业知识库", url: "https://kb.example.com" }
-    ]);
+    expect(back.bkn).toBeUndefined();
   });
 
-  it("round-trips soul and bkn through SOUL template", () => {
+  it("round-trips soul through SOUL template", () => {
     const md = renderSoulMarkdown({
       identity: { name: "n" },
       soul: "line1\nline2",
-      bkn: [{ name: "Doc", url: "https://x" }]
+      bkn: [{ name: "Doc", id: "https://x" }]
     });
     const back = mergeFilesToTemplate("- Name: n\n", md);
     expect(back.soul).toContain("line1");
     expect(back.soul).toContain("line2");
-    expect(back.bkn).toEqual([{ name: "Doc", url: "https://x" }]);
+    expect(back.bkn).toBeUndefined();
   });
 
   it("resolveSoulTemplatePath points at de_agent_soul.pug", () => {

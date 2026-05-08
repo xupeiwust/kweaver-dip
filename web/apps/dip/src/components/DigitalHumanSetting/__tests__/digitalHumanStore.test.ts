@@ -28,7 +28,7 @@ describe('DigitalHumanSetting/digitalHumanStore', () => {
       name: '员工A',
       creature: '简介A',
       soul: '灵魂A',
-      bkn: [{ url: 'u1' }],
+      bkn: [{ id: 'u1' }],
       channel: { type: 'feishu' },
     } as any
     const skills = [{ name: '技能A' }, { name: '技能B' }] as any[]
@@ -38,7 +38,7 @@ describe('DigitalHumanSetting/digitalHumanStore', () => {
 
     expect(state.digitalHumanId).toBe('dh-1')
     expect(state.basic).toEqual({ name: '员工A', creature: '简介A', soul: '灵魂A' })
-    expect(state.bkn).toEqual([{ url: 'u1' }])
+    expect(state.bkn).toEqual([{ id: 'u1' }])
     expect(state.skills).toEqual(skills)
     expect(state.channel).toEqual({ type: 'feishu' })
     expect(state.detail?.skills).toEqual(skills)
@@ -48,7 +48,7 @@ describe('DigitalHumanSetting/digitalHumanStore', () => {
   it('update/delete 系列会更新字段并标记 dirty', () => {
     const store = useDigitalHumanStore.getState()
     store.updateBasic({ name: 'N' })
-    store.updateBkn([{ url: 'u1' }] as any)
+    store.updateBkn([{ id: 'u1' }] as any)
     store.updateSkills([{ name: 's1' }, { name: 's2' }] as any)
     store.deleteBkn('u1')
     store.deleteSkill('s2')
@@ -123,7 +123,7 @@ describe('DigitalHumanSetting/digitalHumanStore', () => {
       name: '员工B',
       creature: '简介B',
       soul: '灵魂B',
-      bkn: [{ url: 'u2' }],
+      bkn: [{ id: 'u2' }],
       channel: { type: 'feishu' },
     } as any
     const skills = [{ name: '技能1' }] as any[]
@@ -137,7 +137,7 @@ describe('DigitalHumanSetting/digitalHumanStore', () => {
     const state = useDigitalHumanStore.getState()
 
     expect(state.basic).toEqual({ name: '员工B', creature: '简介B', soul: '灵魂B' })
-    expect(state.bkn).toEqual([{ url: 'u2' }])
+    expect(state.bkn).toEqual([{ id: 'u2' }])
     expect(state.skills).toEqual(skills)
     expect(state.dirty).toBe(false)
   })

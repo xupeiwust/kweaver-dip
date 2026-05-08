@@ -31,12 +31,13 @@ const KnowledgeConfig = ({ readonly }: KnowledgeConfigProps) => {
   const handleSelectKnowledgeResult = (result: BknKnowledgeNetworkInfo[]) => {
     const next: BknEntry[] = result.map((k) => ({
       name: k.name,
-      url: k.id,
+      id: k.id,
+      comment: k.comment,
     }))
     updateBkn(next)
   }
 
-  // 知识表格列定义（`url` 列展示名沿用「功能描述」表头，与历史接口字段一致）
+  // 知识表格列定义（备注列展示业务知识网络 comment）
   const knowledgeColumns = useMemo(() => {
     const columns = [
       {
@@ -60,8 +61,8 @@ const KnowledgeConfig = ({ readonly }: KnowledgeConfigProps) => {
       },
       {
         title: intl.get('digitalHuman.common.columnFunctionDesc'),
-        dataIndex: 'url',
-        key: 'url',
+        dataIndex: 'comment',
+        key: 'comment',
         ellipsis: true,
         render: (text: string) => text || '--',
       },
@@ -76,7 +77,7 @@ const KnowledgeConfig = ({ readonly }: KnowledgeConfigProps) => {
                 type="text"
                 onClick={(e) => {
                   e.stopPropagation()
-                  deleteBkn(record.url)
+                  deleteBkn(record.id)
                 }}
                 icon={<IconFont type="icon-remove" />}
               />
@@ -117,7 +118,7 @@ const KnowledgeConfig = ({ readonly }: KnowledgeConfigProps) => {
         columns={knowledgeColumns}
         pagination={false}
         className={styles['knowledge-table']}
-        rowKey={(record) => record.url}
+        rowKey={(record) => record.id}
         bordered={false}
         size="small"
         scroll={{ y: 'max(246px, calc(100vh - 299px))' }}
@@ -144,7 +145,7 @@ const KnowledgeConfig = ({ readonly }: KnowledgeConfigProps) => {
         open={selectKnowledgeModalOpen}
         onOk={handleSelectKnowledgeResult}
         onCancel={() => setSelectKnowledgeModalOpen(false)}
-        defaultSelectedIds={bkn.map((item) => item.url) || []}
+        defaultSelectedIds={bkn.map((item) => item.id) || []}
       />
     </ScrollBarContainer>
   )

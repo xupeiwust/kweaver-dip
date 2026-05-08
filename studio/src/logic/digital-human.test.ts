@@ -9,6 +9,7 @@ import type { DigitalEmployeeTokenAdapter } from "../adapters/digital-employee-t
 import type { OpenClawCronAdapter } from "../adapters/openclaw-cron-adapter";
 
 import type { AgentSkillsLogic } from "./agent-skills";
+import type { BknLogic } from "./bkn";
 
 /**
  * Mutable fake home for `node:os` `homedir` (see hoisted mock below).
@@ -34,7 +35,10 @@ function stubDigitalEmployeeTokenAdapter(
 ): DigitalEmployeeTokenAdapter {
   return {
     findKweaverToken: vi.fn(),
+    findBknScope: vi.fn(),
+    upsertDigitalEmployee: vi.fn().mockResolvedValue(undefined),
     upsertKweaverToken: vi.fn().mockResolvedValue(undefined),
+    upsertBknScope: vi.fn().mockResolvedValue(undefined),
     deleteKweaverToken: vi.fn().mockResolvedValue(undefined),
     markDigitalEmployeeDeleted: vi.fn().mockResolvedValue(undefined),
     ...overrides
@@ -78,6 +82,18 @@ function stubCronAdapter(
     listCronRuns: vi.fn(),
     ...overrides
   } as OpenClawCronAdapter;
+}
+
+function stubBknLogic(overrides?: Partial<BknLogic>): BknLogic {
+  return {
+    listKnowledgeNetworks: vi.fn().mockResolvedValue({
+      status: 200,
+      headers: new Headers(),
+      body: JSON.stringify({ entries: [], total_count: 0 })
+    }),
+    getKnowledgeNetwork: vi.fn(),
+    ...overrides
+  } as BknLogic;
 }
 
 describe("DefaultDigitalHumanLogic", () => {
@@ -266,6 +282,57 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
       soul: "Soul text\n",
       skills: ["s1"]
     });
+  });
+
+  it("getDigitalHuman filters BKN list by RDS scope ids", async () => {
+    const id = "agent-bkn-rds-only";
+    const ws = resolveDefaultWorkspace(id);
+    mkdirSync(ws, { recursive: true });
+    writeFileSync(join(ws, "IDENTITY.md"), "- Name: Alice\n", "utf8");
+    writeFileSync(
+      join(ws, "SOUL.md"),
+      "## 业务知识网络\n> | 名称 | 地址 |\n> |------|------|\n> | Legacy | legacy-kn |\n",
+      "utf8"
+    );
+    const tokenAdapter = stubDigitalEmployeeTokenAdapter({
+      findBknScope: vi.fn().mockResolvedValue("kn-1,kn-missing")
+    });
+    const listKnowledgeNetworks = vi.fn().mockResolvedValue({
+      status: 200,
+      headers: new Headers(),
+      body: JSON.stringify({
+        entries: [
+          { id: "kn-1", name: "Knowledge 1", comment: "Comment 1" },
+          { id: "kn-2", name: "Knowledge 2", comment: "Comment 2" }
+        ],
+        total_count: 2
+      })
+    });
+    const adapter = {
+      listAgents: vi.fn(),
+      createAgent: vi.fn(),
+      deleteAgent: vi.fn(),
+      getAgentFile: vi.fn().mockImplementation(async ({ name }: { name: string }) => ({
+        file: { content: readFileSync(join(ws, name), "utf8") }
+      })),
+      setAgentFile: vi.fn(),
+      getConfig: vi.fn(),
+      patchConfig: vi.fn()
+    };
+    const logic = new DefaultDigitalHumanLogic({
+      openClawAgentsAdapter: adapter as never,
+      openClawCronAdapter: stubCronAdapter(),
+      agentSkillsLogic: stubAgentSkills(),
+      digitalEmployeeTokenAdapter: tokenAdapter,
+      bknLogic: stubBknLogic({ listKnowledgeNetworks })
+    });
+
+    await expect(logic.getDigitalHuman(id)).resolves.toMatchObject({
+      id,
+      bkn: [{ id: "kn-1", name: "Knowledge 1", comment: "Comment 1" }]
+    });
+    expect(tokenAdapter.findBknScope).toHaveBeenCalledWith(id);
+    expect(listKnowledgeNetworks).toHaveBeenCalledWith({ limit: "-1" });
   });
 
   it("normalizeOpenClawAccountIdFromAppId lowercases valid Feishu-style app ids", () => {
@@ -958,11 +1025,53 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
     expect(setAgentFile).not.toHaveBeenCalledWith(
       expect.objectContaining({ name: "SECRET" })
     );
-    expect(tokenAdapter.upsertKweaverToken).toHaveBeenCalledWith(
+    expect(tokenAdapter.upsertDigitalEmployee).toHaveBeenCalledWith(
       "agent-secret",
-      "kw-token"
+      "kw-token",
+      null
     );
     expect(tokenAdapter.deleteKweaverToken).not.toHaveBeenCalled();
+  });
+
+  it("createDigitalHuman writes BKN scope to the database instead of SOUL.md", async () => {
+    const setAgentFile = vi.fn().mockResolvedValue({ ok: true });
+    const tokenAdapter = stubDigitalEmployeeTokenAdapter();
+    const logic = new DefaultDigitalHumanLogic({
+      openClawAgentsAdapter: {
+        listAgents: vi.fn(),
+        createAgent: vi.fn().mockResolvedValue({ ok: true }),
+        deleteAgent: vi.fn(),
+        getAgentFile: vi.fn(),
+        setAgentFile,
+        listAgentFiles: vi.fn().mockResolvedValue({ agentId: "", files: [] }),
+        getConfig: vi.fn(),
+        patchConfig: vi.fn()
+      } as never,
+      openClawCronAdapter: stubCronAdapter(),
+      agentSkillsLogic: stubAgentSkills(),
+      digitalEmployeeTokenAdapter: tokenAdapter
+    });
+
+    await logic.createDigitalHuman({
+      id: "agent-bkn",
+      name: "BKN Agent",
+      bkn: [
+        { name: "Knowledge 1", id: "kn-1" },
+        { name: "Knowledge 2", id: "kn-2" }
+      ]
+    });
+
+    expect(tokenAdapter.upsertDigitalEmployee).toHaveBeenCalledWith(
+      "agent-bkn",
+      null,
+      "kn-1,kn-2"
+    );
+    expect(setAgentFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "SOUL.md",
+        content: expect.not.stringContaining("kn-1") as string
+      })
+    );
   });
 
   it("createDigitalHuman uses the provided id instead of generating a uuid", async () => {
@@ -1046,7 +1155,11 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
       "schedule-plan",
       "kweaver-core"
     ]);
-    expect(tokenAdapter.upsertKweaverToken).toHaveBeenCalledWith(result.id, null);
+    expect(tokenAdapter.upsertDigitalEmployee).toHaveBeenCalledWith(
+      result.id,
+      null,
+      null
+    );
   });
 
   it("createDigitalHuman deduplicates repeated request skill names", async () => {
@@ -1200,7 +1313,17 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
   it("updateDigitalHuman replaces KWeaver token in the database without changing BKN", async () => {
     const id = "agent-token";
     const setAgentFile = vi.fn().mockResolvedValue({ ok: true });
-    const tokenAdapter = stubDigitalEmployeeTokenAdapter();
+    const tokenAdapter = stubDigitalEmployeeTokenAdapter({
+      findBknScope: vi.fn().mockResolvedValue("kn-1")
+    });
+    const listKnowledgeNetworks = vi.fn().mockResolvedValue({
+      status: 200,
+      headers: new Headers(),
+      body: JSON.stringify({
+        entries: [{ id: "kn-1", name: "Knowledge 1", comment: "Comment 1" }],
+        total_count: 1
+      })
+    });
     const logic = new DefaultDigitalHumanLogic({
       openClawAgentsAdapter: {
         listAgents: vi.fn(),
@@ -1220,14 +1343,17 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
       } as never,
       openClawCronAdapter: stubCronAdapter(),
       agentSkillsLogic: stubAgentSkills(),
-      digitalEmployeeTokenAdapter: tokenAdapter
+      digitalEmployeeTokenAdapter: tokenAdapter,
+      bknLogic: stubBknLogic({ listKnowledgeNetworks })
     });
 
     const result = await logic.updateDigitalHuman(id, {
       kweaver_token: "new-token"
     });
 
-    expect(result.bkn).toEqual([{ name: "K", url: "kn-1" }]);
+    expect(result.bkn).toEqual([
+      { id: "kn-1", name: "Knowledge 1", comment: "Comment 1" }
+    ]);
     expect(setAgentFile).not.toHaveBeenCalledWith(
       expect.objectContaining({ name: "SECRET" })
     );
@@ -1262,7 +1388,7 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
     });
 
     const result = await logic.updateDigitalHuman(id, {
-      bkn: [{ name: "Ignored", url: "kn-2" }],
+      bkn: [{ name: "Ignored", id: "kn-2" }],
       kweaver_token: null
     });
 
@@ -1272,6 +1398,7 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
     );
     expect(tokenAdapter.deleteKweaverToken).toHaveBeenCalledWith(id);
     expect(tokenAdapter.upsertKweaverToken).not.toHaveBeenCalled();
+    expect(tokenAdapter.upsertBknScope).toHaveBeenCalledWith(id, null);
     expect(setAgentFile).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "SOUL.md",

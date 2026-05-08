@@ -53,6 +53,45 @@ describe("DefaultDigitalEmployeeTokenAdapter", () => {
     await expect(adapter.findKweaverToken("agent-1")).resolves.toBeUndefined();
   });
 
+  it("reads the BKN scope by agent id", async () => {
+    const pool = createPoolDouble();
+    vi.mocked(pool.execute).mockResolvedValue([
+      [{ bkn_scope: "kn-1,kn-2" }],
+      []
+    ] as never);
+    const adapter = new DefaultDigitalEmployeeTokenAdapter(pool);
+
+    await expect(adapter.findBknScope("agent-1")).resolves.toBe("kn-1,kn-2");
+    expect(pool.execute).toHaveBeenCalledWith(
+      [
+        "SELECT bkn_scope FROM t_digital_employee",
+        "WHERE id = :agentId AND is_deleted = FALSE",
+        "LIMIT 1"
+      ].join(" "),
+      { agentId: "agent-1" }
+    );
+  });
+
+  it("upserts the full digital employee row", async () => {
+    const pool = createPoolDouble();
+    vi.mocked(pool.execute).mockResolvedValue([[], []] as never);
+    const adapter = new DefaultDigitalEmployeeTokenAdapter(pool);
+
+    await adapter.upsertDigitalEmployee("agent-1", "token-1", "kn-1,kn-2");
+
+    expect(pool.execute).toHaveBeenCalledWith(
+      [
+        "INSERT INTO t_digital_employee (id, kweaver_token, bkn_scope, is_deleted)",
+        "VALUES (:agentId, :token, :bknScope, FALSE)",
+        "ON DUPLICATE KEY UPDATE",
+        "kweaver_token = VALUES(kweaver_token),",
+        "bkn_scope = VALUES(bkn_scope),",
+        "is_deleted = FALSE"
+      ].join(" "),
+      { agentId: "agent-1", token: "token-1", bknScope: "kn-1,kn-2" }
+    );
+  });
+
   it("upserts the token by agent id", async () => {
     const pool = createPoolDouble();
     vi.mocked(pool.execute).mockResolvedValue([[], []] as never);
@@ -91,6 +130,25 @@ describe("DefaultDigitalEmployeeTokenAdapter", () => {
     );
   });
 
+  it("upserts the BKN scope by agent id", async () => {
+    const pool = createPoolDouble();
+    vi.mocked(pool.execute).mockResolvedValue([[], []] as never);
+    const adapter = new DefaultDigitalEmployeeTokenAdapter(pool);
+
+    await adapter.upsertBknScope("agent-1", "kn-1,kn-2");
+
+    expect(pool.execute).toHaveBeenCalledWith(
+      [
+        "INSERT INTO t_digital_employee (id, bkn_scope, is_deleted)",
+        "VALUES (:agentId, :bknScope, FALSE)",
+        "ON DUPLICATE KEY UPDATE",
+        "bkn_scope = VALUES(bkn_scope),",
+        "is_deleted = FALSE"
+      ].join(" "),
+      { agentId: "agent-1", bknScope: "kn-1,kn-2" }
+    );
+  });
+
   it("clears the token by agent id", async () => {
     const pool = createPoolDouble();
     vi.mocked(pool.execute).mockResolvedValue([[], []] as never);
@@ -99,7 +157,11 @@ describe("DefaultDigitalEmployeeTokenAdapter", () => {
     await adapter.deleteKweaverToken("agent-1");
 
     expect(pool.execute).toHaveBeenCalledWith(
-      "UPDATE t_digital_employee SET kweaver_token = NULL WHERE id = :agentId",
+      [
+        "UPDATE t_digital_employee",
+        "SET kweaver_token = NULL, bkn_scope = NULL",
+        "WHERE id = :agentId"
+      ].join(" "),
       { agentId: "agent-1" }
     );
   });

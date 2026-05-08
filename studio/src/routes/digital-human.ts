@@ -158,7 +158,7 @@ function parseUpdateRequest(body: unknown): UpdateDigitalHumanRequest {
     } else {
       const parsed = parseBknArray(raw.bkn);
       if (!parsed) {
-        throw new HttpError(400, "Each bkn entry must have both name and url");
+        throw new HttpError(400, "Each bkn entry must have both name and id");
       }
       patch.bkn = parsed;
     }
@@ -500,11 +500,12 @@ function parseBknArray(value: unknown): BknEntry[] | undefined {
     if (typeof item !== "object" || item === null) continue;
     const raw = item as Record<string, unknown>;
     const name = parseOptionalString(raw.name);
-    const url = parseOptionalString(raw.url);
-    if (!name || !url) {
-      throw new HttpError(400, "Each bkn entry must have both name and url");
+    const id = parseOptionalString(raw.id);
+    if (!name || !id) {
+      throw new HttpError(400, "Each bkn entry must have both name and id");
     }
-    entries.push({ name, url });
+    const comment = parseOptionalString(raw.comment);
+    entries.push(comment === undefined ? { name, id } : { name, id, comment });
   }
   return entries.length > 0 ? entries : undefined;
 }

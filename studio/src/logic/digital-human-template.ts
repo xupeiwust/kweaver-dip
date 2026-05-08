@@ -14,7 +14,6 @@ const SOUL_TEMPLATE_FILE = "de_agent_soul.pug";
 const TOOLS_TEMPLATE_FILE = "TOOLS.md.pug";
 
 const SLOT_DE_SETTING = "{{de_setting}}";
-const SLOT_BKN_CONTENT = "{{bkn_content}}";
 
 /** Marker for SOUL.md generated from `templates/de_agent_soul.pug`. */
 const DE_AGENT_PERSONA_MARKER = "# 👤 角色定义";
@@ -121,9 +120,9 @@ export function renderIdentityMarkdown(
 /**
  * Renders SOUL.md from `templates/de_agent_soul.pug`.
  *
- * The file is Markdown with two slots filled at render time:
+ * The file is Markdown with template slots filled at render time:
  * - `{{de_setting}}` — 角色设定（来自 `template.soul`，渲染为 `> …` 引用块）
- * - `{{bkn_content}}` — 业务知识网络（来自 `template.bkn`，渲染为引用块内的表格）
+ * - `{{bkn_content}}` — 保持为空；业务知识网络范围写入 RDS，不写入 SOUL.md
  *
  * (The real file is not compiled as Pug because the body is Markdown with `#` headings;
  * slot substitution avoids Pug treating `#` as an ID.)
@@ -134,10 +133,9 @@ export function renderIdentityMarkdown(
 export function renderSoulMarkdown(template: DigitalHumanTemplate): string {
   const raw = readFileSync(resolveSoulTemplatePath(), "utf8");
   const de_setting = formatPersonaBlockquote(template.soul ?? "");
-  const bkn_content = formatBknBlockquote(template.bkn);
   return raw
     .replaceAll(SLOT_DE_SETTING, de_setting)
-    .replaceAll(SLOT_BKN_CONTENT, bkn_content);
+    .replaceAll("{{bkn_content}}", "");
 }
 
 /**
@@ -162,19 +160,6 @@ function formatPersonaBlockquote(soul: string): string {
     .split(/\r?\n/)
     .map((line) => `> ${line}`)
     .join("\n");
-}
-
-/** Renders BKN as a GitHub-style table inside a blockquote (`> | ...`). */
-function formatBknBlockquote(bkn: BknEntry[] | undefined): string {
-  if (!bkn || bkn.length === 0) {
-    return "";
-  }
-  const rows = [
-    "| 名称 | 地址 |",
-    "|------|------|",
-    ...bkn.map((e) => `| ${e.name} | ${e.url} |`)
-  ];
-  return rows.map((line) => `> ${line}`).join("\n");
 }
 
 const BKN_HEADING = "## 业务知识网络";
@@ -406,7 +391,7 @@ function parseBknTable(section: string): BknEntry[] {
     if (cells.length < 2) continue;
     if (cells[0] === "名称" || /^-+$/.test(cells[0])) continue;
 
-    entries.push({ name: cells[0], url: cells[1] });
+    entries.push({ name: cells[0], id: cells[1] });
   }
 
   return entries;
@@ -416,7 +401,7 @@ function dedupeBknEntries(entries: BknEntry[]): BknEntry[] {
   const seen = new Set<string>();
   const out: BknEntry[] = [];
   for (const e of entries) {
-    const key = `${e.name}\t${e.url}`;
+    const key = `${e.name}\t${e.id}`;
     if (seen.has(key)) {
       continue;
     }

@@ -81,6 +81,9 @@ SW ->> ISF: 获取应用账号 Token
 
 创建数字员工时，将 KWeaver Token 值写入 t_digital_employee 表，表结构参考：@design/data-model/studio/data-model.md
 
+##### 写入知识范围
+创建数字员工时，将选择的业务知识网络 id 值以逗号隔开的形式写入 t_digital_employee 表，表结构参考：@design/data-model/studio/data-model.md
+
 ### 通过接口创建数字员工
 提供 HTTP 接口来创建数字员工。
 - endpoint: POST  /dip-studio/v1/digital-human
@@ -101,13 +104,13 @@ BE ->> OC: 2. ws: agents.files.get(IDENTITY.md)
 BE ->> BE: 3. 解析 IDENTITY.md，组装列表项
 ```
 
-1、获取 Agent 列表  
+1、获取 Agent 列表
 通过 OpenClaw 的 WebSocket RPC 执行 `agents.list` method，获取全部 agent 基础信息。
 
-2、读取每个 Agent 的 IDENTITY.md  
+2、读取每个 Agent 的 IDENTITY.md
 通过 OpenClaw 的 WebSocket RPC 执行 `agents.files.get` method（`name=IDENTITY.md`），用于读取数字员工的名称和角色信息。
 
-3、组装列表返回结果  
+3、组装列表返回结果
 优先使用 IDENTITY.md 解析出的 `name` 和 `creature`。当文件缺失或读取失败时，回退到 OpenClaw agent 的基础字段（如 `agent.name`）。
 
 ### 通过接口查询数字员工列表

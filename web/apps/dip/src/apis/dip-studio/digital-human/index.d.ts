@@ -7,8 +7,10 @@
 export interface BknEntry {
   /** 知识源名称 */
   name: string
-  /** 知识源 URL，即 Id */
-  url: string
+  /** 业务知识网络 ID */
+  id: string
+  /** 业务知识网络备注 */
+  comment?: string
 }
 
 /** 渠道类型；省略时按飞书处理，响应中通常会规范为 `feishu` */

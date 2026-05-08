@@ -8,6 +8,7 @@ import type { OpenClawAgentsAdapter } from "../adapters/openclaw-agents-adapter"
 import type { OpenClawCronAdapter } from "../adapters/openclaw-cron-adapter";
 import { HttpError } from "../errors/http-error";
 import type {
+  BknEntry,
   ChannelConfig,
   CreateDigitalHumanRequest,
   CreateDigitalHumanResult,
@@ -23,6 +24,7 @@ import type { OpenClawCronJob } from "../types/plan";
 import { normalizeCreateDigitalHumanSkills } from "../utils/skills";
 import { resolveOpenClawWorkspacePath } from "../utils/workspace-secret";
 import type { AgentSkillsLogic } from "./agent-skills";
+import { DefaultBknLogic, type BknLogic } from "./bkn";
 import {
   buildTemplate,
   mergeFilesToTemplate,
@@ -48,7 +50,8 @@ export interface DigitalHumanLogic {
 
   /**
    * Retrieves the detail view for a single digital human: fields parsed
-   * from IDENTITY.md and SOUL.md, configured skills, and Feishu channel (when bound).
+   * from IDENTITY.md and SOUL.md, BKN scope from RDS, configured skills,
+   * and Feishu channel (when bound).
    *
    * @param id The digital human identifier.
    * @returns The detail payload (flat fields, no nested template).
@@ -104,9 +107,14 @@ export interface DigitalHumanLogicOptions {
   agentSkillsLogic: AgentSkillsLogic;
 
   /**
-   * Adapter used to persist per-digital-employee KWeaver tokens.
+   * Adapter used to persist per-digital-employee KWeaver tokens and BKN scope.
    */
   digitalEmployeeTokenAdapter?: DigitalEmployeeTokenAdapter;
+
+  /**
+   * Logic used to fetch BKN knowledge network metadata.
+   */
+  bknLogic?: BknLogic;
 }
 
 /**
@@ -117,6 +125,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
   private readonly openClawCronAdapter: OpenClawCronAdapter;
   private readonly agentSkillsLogic: AgentSkillsLogic;
   private readonly digitalEmployeeTokenAdapter?: DigitalEmployeeTokenAdapter;
+  private readonly bknLogic: BknLogic;
 
   /**
    * Creates the digital human logic.
@@ -128,6 +137,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
     this.openClawCronAdapter = options.openClawCronAdapter;
     this.agentSkillsLogic = options.agentSkillsLogic;
     this.digitalEmployeeTokenAdapter = options.digitalEmployeeTokenAdapter;
+    this.bknLogic = options.bknLogic ?? new DefaultBknLogic();
   }
 
   /**
@@ -153,7 +163,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
 
   /**
    * Reads IDENTITY.md and SOUL.md for a given agent and maps them to
-   * flat detail fields (name, creature, soul, bkn), plus skills and channel.
+   * flat detail fields (name, creature, soul), plus BKN scope, skills and channel.
    *
    * @param id The digital human identifier.
    * @returns The detail payload.
@@ -179,6 +189,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
     }
 
     const template = mergeFilesToTemplate(identityContent, soulContent);
+    const bkn = await this.readBknEntries(id);
     let skills: string[] | undefined;
     try {
       const binding = await this.agentSkillsLogic.getAgentSkills(id);
@@ -196,7 +207,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
       creature: template.identity.creature,
       icon_id: template.identity.icon_id,
       soul: template.soul,
-      bkn: template.bkn,
+      bkn,
       skills,
       ...(channel !== undefined ? { channel } : {})
     };
@@ -232,7 +243,8 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
 
     await this.writeDigitalEmployeeRecordToDatabase(
       id,
-      request.kweaver_token ?? null
+      request.kweaver_token ?? null,
+      serializeBknScope(request.bkn)
     );
 
     const skills = normalizeCreateDigitalHumanSkills(request.skills);
@@ -336,6 +348,10 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
       await this.writeKweaverTokenToDatabase(id, patch.kweaver_token);
     }
 
+    if ("bkn" in patch || patch.kweaver_token === null) {
+      await this.writeBknScopeToDatabase(id, merged.bkn);
+    }
+
     let skillsOut: string[] | undefined;
     if (patch.skills !== undefined) {
       await this.agentSkillsLogic.updateAgentSkills(id, patch.skills);
@@ -361,6 +377,10 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
       }
     }
 
+    const responseBkn = "bkn" in patch || patch.kweaver_token === null
+      ? merged.bkn
+      : await this.readBknEntries(id);
+
     return {
       id,
       name: merged.identity.name,
@@ -368,7 +388,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
       icon_id: merged.identity.icon_id,
       soul: merged.soul,
       skills: skillsOut,
-      bkn: merged.bkn,
+      bkn: responseBkn,
       channel:
         patch.channel !== undefined
           ? normalizeChannelForResponse(patch.channel)
@@ -480,16 +500,22 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
    *
    * @param agentId Digital employee id, equal to the OpenClaw agent id.
    * @param token Token to write, or `null` when not configured.
+   * @param bknScope Comma-separated BKN id list to write, or `null` when not configured.
    */
   private async writeDigitalEmployeeRecordToDatabase(
     agentId: string,
-    token: string | null
+    token: string | null,
+    bknScope: string | null
   ): Promise<void> {
     if (this.digitalEmployeeTokenAdapter === undefined) {
       return;
     }
 
-    await this.digitalEmployeeTokenAdapter.upsertKweaverToken(agentId, token);
+    await this.digitalEmployeeTokenAdapter.upsertDigitalEmployee(
+      agentId,
+      token,
+      bknScope
+    );
   }
 
   /**
@@ -512,6 +538,131 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
       await this.digitalEmployeeTokenAdapter.upsertKweaverToken(agentId, token);
     }
   }
+
+  /**
+   * Persists a BKN scope update into the digital employee table.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @param bkn BKN entries whose `id` field carries the BKN id.
+   */
+  private async writeBknScopeToDatabase(
+    agentId: string,
+    bkn: BknEntry[] | undefined
+  ): Promise<void> {
+    if (this.digitalEmployeeTokenAdapter === undefined) {
+      return;
+    }
+
+    await this.digitalEmployeeTokenAdapter.upsertBknScope(
+      agentId,
+      serializeBknScope(bkn)
+    );
+  }
+
+  /**
+   * Reads BKN entries from RDS.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @returns BKN entries for API responses.
+   */
+  private async readBknEntries(agentId: string): Promise<BknEntry[] | undefined> {
+    if (this.digitalEmployeeTokenAdapter === undefined) {
+      return undefined;
+    }
+
+    const bknScope = await this.digitalEmployeeTokenAdapter.findBknScope(agentId);
+    const bknIds = deserializeBknScopeIds(bknScope);
+
+    if (bknIds.length === 0) {
+      return undefined;
+    }
+
+    const result = await this.bknLogic.listKnowledgeNetworks({ limit: "-1" });
+    const networks = parseKnowledgeNetworkListResponse(result.body);
+    const networksById = new Map(networks.map((network) => [network.id, network]));
+
+    return bknIds
+      .map((id) => networksById.get(id))
+      .filter((entry): entry is BknEntry => entry !== undefined);
+  }
+}
+
+/**
+ * Serializes BKN entries to the database scope string.
+ *
+ * @param bkn BKN entries whose `id` field carries the BKN id.
+ * @returns Comma-separated BKN ids, or `null` when no scope is configured.
+ */
+function serializeBknScope(bkn: BknEntry[] | undefined): string | null {
+  if (bkn === undefined || bkn.length === 0) {
+    return null;
+  }
+
+  const ids = bkn
+    .map((entry) => entry.id.trim())
+    .filter((id) => id.length > 0);
+
+  return ids.length > 0 ? ids.join(",") : null;
+}
+
+/**
+ * Deserializes the database BKN scope string.
+ *
+ * @param bknScope Comma-separated BKN ids from RDS.
+ * @returns Ordered BKN ids.
+ */
+function deserializeBknScopeIds(bknScope: string | undefined): string[] {
+  if (bknScope === undefined || bknScope.trim().length === 0) {
+    return [];
+  }
+
+  return bknScope
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+}
+
+interface BknListResponseBody {
+  entries?: unknown;
+}
+
+interface BknKnowledgeNetworkBody {
+  id?: unknown;
+  name?: unknown;
+  comment?: unknown;
+}
+
+/**
+ * Parses and projects BKN Backend list response entries for digital-human details.
+ *
+ * @param body Raw JSON body returned by BKN Backend.
+ * @returns Knowledge network entries with only id, name, and comment.
+ */
+function parseKnowledgeNetworkListResponse(body: string): BknEntry[] {
+  const parsed = JSON.parse(body) as BknListResponseBody;
+
+  if (!Array.isArray(parsed.entries)) {
+    return [];
+  }
+
+  return parsed.entries
+    .map((entry): BknEntry | undefined => {
+      if (typeof entry !== "object" || entry === null) {
+        return undefined;
+      }
+
+      const network = entry as BknKnowledgeNetworkBody;
+      if (typeof network.id !== "string" || typeof network.name !== "string") {
+        return undefined;
+      }
+
+      return {
+        id: network.id,
+        name: network.name,
+        comment: typeof network.comment === "string" ? network.comment : ""
+      };
+    })
+    .filter((entry): entry is BknEntry => entry !== undefined);
 }
 
 /**

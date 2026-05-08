@@ -162,15 +162,15 @@ export interface DigitalHumanTemplate {
   soul: string;
 
   /**
-   * Business Knowledge Network entries parsed from / rendered to SOUL.md.
+   * Business Knowledge Network entries carried by the API.
    */
   bkn?: BknEntry[];
 }
 
 /**
  * A single entry in the Business Knowledge Network (BKN).
- * Stored as a markdown table row inside SOUL.md but exposed
- * as a structured field in the API.
+ * Stored in `t_digital_employee.bkn_scope` as comma-separated ids;
+ * the `id` field carries the BKN id selected by the UI.
  */
 export interface BknEntry {
   /**
@@ -179,9 +179,14 @@ export interface BknEntry {
   name: string;
 
   /**
-   * URL pointing to the knowledge source.
+   * Business Knowledge Network id.
    */
-  url: string;
+  id: string;
+
+  /**
+   * Business Knowledge Network comment.
+   */
+  comment?: string;
 }
 
 /**
@@ -250,7 +255,7 @@ export interface CreateDigitalHumanRequest {
 
   /**
    * Business Knowledge Network entries.
-   * Stored as a markdown table appended to SOUL.md.
+   * Stored in `t_digital_employee.bkn_scope` as comma-separated ids.
    */
   bkn?: BknEntry[];
 
@@ -342,7 +347,7 @@ export interface DigitalHumanDetail {
   soul: string;
 
   /**
-   * Business Knowledge Network entries (from SOUL.md table).
+   * Business Knowledge Network entries (from `t_digital_employee.bkn_scope`).
    */
   bkn?: BknEntry[];
 
@@ -388,7 +393,7 @@ export interface UpdateDigitalHumanRequest {
   skills?: string[];
 
   /**
-   * When present, replaces BKN entries stored in SOUL.md.
+   * When present, replaces BKN entries stored in `t_digital_employee.bkn_scope`.
    */
   bkn?: BknEntry[];
 

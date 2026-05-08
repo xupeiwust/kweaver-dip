@@ -776,7 +776,7 @@ describe("createDigitalHumanRouter", () => {
           creature: "c",
           soul: "s",
           skills: ["sk"],
-          bkn: [{ name: "bn", url: "https://u" }],
+          bkn: [{ name: "bn", id: "bkn-id-1" }],
           kweaver_token: " kw-token ",
           channel: { type: "dingtalk", appId: "i", appSecret: "sec" }
         }
@@ -792,7 +792,7 @@ describe("createDigitalHumanRouter", () => {
         creature: "c",
         soul: "s",
         skills: ["sk"],
-        bkn: [{ name: "bn", url: "https://u" }],
+        bkn: [{ name: "bn", id: "bkn-id-1" }],
         kweaver_token: "kw-token",
         channel: { type: "dingtalk", appId: "i", appSecret: "sec" }
       })
@@ -853,7 +853,7 @@ describe("createDigitalHumanRouter", () => {
         params: { id: "i" },
         body: {
           skills: ["a", "b"],
-          bkn: [{ name: "x", url: "https://y" }]
+          bkn: [{ name: "x", id: "bkn-id-2" }]
         }
       } as unknown as Request,
       response,
@@ -862,7 +862,7 @@ describe("createDigitalHumanRouter", () => {
 
     expect(updateDigitalHuman).toHaveBeenCalledWith("i", {
       skills: ["a", "b"],
-      bkn: [{ name: "x", url: "https://y" }]
+      bkn: [{ name: "x", id: "bkn-id-2" }]
     });
     expect(next).not.toHaveBeenCalled();
   });

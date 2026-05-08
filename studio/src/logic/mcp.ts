@@ -28,6 +28,33 @@ export interface GetKweaverTokenResult {
 }
 
 /**
+ * Request payload for the `get_bkn_scope` MCP tool.
+ */
+export interface GetBknScopeRequest {
+  /**
+   * Digital employee id, equal to the OpenClaw agent id.
+   */
+  agentId: string;
+}
+
+/**
+ * Response payload for the `get_bkn_scope` MCP tool.
+ */
+export interface GetBknScopeResult {
+  [key: string]: unknown;
+
+  /**
+   * Digital employee id, equal to the OpenClaw agent id.
+   */
+  agentId: string;
+
+  /**
+   * Comma-separated BKN id list associated with the digital employee.
+   */
+  bkn_scope: string;
+}
+
+/**
  * Application logic exposed through the Studio MCP server.
  */
 export interface StudioMcpLogic {
@@ -38,6 +65,14 @@ export interface StudioMcpLogic {
    * @returns The token result.
    */
   getKweaverToken(request: GetKweaverTokenRequest): Promise<GetKweaverTokenResult>;
+
+  /**
+   * Gets the BKN scope for one digital employee.
+   *
+   * @param request Tool request payload.
+   * @returns The BKN scope result.
+   */
+  getBknScope(request: GetBknScopeRequest): Promise<GetBknScopeResult>;
 }
 
 /**
@@ -92,6 +127,30 @@ export class DefaultStudioMcpLogic implements StudioMcpLogic {
     return {
       agentId,
       kweaver_token: token
+    };
+  }
+
+  /**
+   * Gets the BKN scope for one digital employee.
+   *
+   * @param request Tool request payload.
+   * @returns The BKN scope result.
+   * @throws {Error} Thrown when `agentId` is empty.
+   */
+  public async getBknScope(
+    request: GetBknScopeRequest
+  ): Promise<GetBknScopeResult> {
+    const agentId = request.agentId.trim();
+
+    if (agentId.length === 0) {
+      throw new Error("agentId is required");
+    }
+
+    const bknScope = await this.tokenAdapter.findBknScope(agentId);
+
+    return {
+      agentId,
+      bkn_scope: bknScope?.trim() ?? ""
     };
   }
 }

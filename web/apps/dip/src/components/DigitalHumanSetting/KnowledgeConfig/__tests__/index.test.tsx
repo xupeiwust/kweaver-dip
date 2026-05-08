@@ -68,7 +68,7 @@ describe('DigitalHumanSetting/KnowledgeConfig', () => {
 
   it('已有知识时应该正确渲染表格', () => {
     mockedUseDigitalHumanStore.mockReturnValue({
-      bkn: [{ name: '业务知识A', url: 'bkn-id-1' }],
+      bkn: [{ name: '业务知识A', id: 'bkn-id-1', comment: '备注A' }],
       updateBkn: mockUpdateBkn,
       deleteBkn: mockDeleteBkn,
     })
@@ -76,7 +76,7 @@ describe('DigitalHumanSetting/KnowledgeConfig', () => {
     render(<KnowledgeConfig />)
 
     expect(screen.getAllByText('业务知识A').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('bkn-id-1')).toBeInTheDocument()
+    expect(screen.getByText('备注A')).toBeInTheDocument()
     const buttons = screen.getAllByRole('button')
     expect(buttons.length).toBeGreaterThanOrEqual(2)
     expect(screen.getByRole('button', { name: addKnowledgeBtnName })).toBeInTheDocument()
@@ -84,7 +84,7 @@ describe('DigitalHumanSetting/KnowledgeConfig', () => {
 
   it('只读模式不显示操作列', () => {
     mockedUseDigitalHumanStore.mockReturnValue({
-      bkn: [{ name: '业务知识A', url: 'bkn-id-1' }],
+      bkn: [{ name: '业务知识A', id: 'bkn-id-1', comment: '备注A' }],
       updateBkn: mockUpdateBkn,
       deleteBkn: mockDeleteBkn,
     })
@@ -98,7 +98,7 @@ describe('DigitalHumanSetting/KnowledgeConfig', () => {
 
   it('点击添加知识按钮应该打开弹窗', () => {
     mockedUseDigitalHumanStore.mockReturnValue({
-      bkn: [{ name: '业务知识A', url: 'bkn-id-1' }],
+      bkn: [{ name: '业务知识A', id: 'bkn-id-1', comment: '备注A' }],
       updateBkn: mockUpdateBkn,
       deleteBkn: mockDeleteBkn,
     })
@@ -124,7 +124,7 @@ describe('DigitalHumanSetting/KnowledgeConfig', () => {
 
   it('点击移除按钮应该调用 deleteBkn', () => {
     mockedUseDigitalHumanStore.mockReturnValue({
-      bkn: [{ name: '业务知识A', url: 'bkn-id-1' }],
+      bkn: [{ name: '业务知识A', id: 'bkn-id-1', comment: '备注A' }],
       updateBkn: mockUpdateBkn,
       deleteBkn: mockDeleteBkn,
     })

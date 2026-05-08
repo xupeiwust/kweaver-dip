@@ -70,8 +70,8 @@ export interface DigitalHumanState {
   updateBasic: (patch: Partial<DigitalHumanBasic>) => void
   /** 批量覆盖知识源列表 */
   updateBkn: (patches: BknEntry[]) => void
-  /** 删除单个知识源（按 url） */
-  deleteBkn: (url: string) => void
+  /** 删除单个知识源（按 id） */
+  deleteBkn: (id: string) => void
   /** 更新技能目录名列表（整组替换） */
   updateSkills: (patches: DigitalHumanSkill[]) => void
   /** 合并默认预置技能到当前配置和详情快照，不标记 dirty */
@@ -188,9 +188,9 @@ export const useDigitalHumanStore = create<DigitalHumanState>()((set) => ({
       dirty: true,
     })),
 
-  deleteBkn: (url) =>
+  deleteBkn: (id) =>
     set((state) => ({
-      bkn: state.bkn.filter((k) => k.url !== url),
+      bkn: state.bkn.filter((k) => k.id !== id),
       dirty: true,
     })),
 

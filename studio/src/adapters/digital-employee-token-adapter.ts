@@ -1,7 +1,7 @@
 import type { Pool, RowDataPacket } from "mysql2/promise";
 
 /**
- * Port used by MCP logic to read digital employee token data.
+ * Port used to read and write digital employee RDS data.
  */
 export interface DigitalEmployeeTokenAdapter {
   /**
@@ -13,12 +13,41 @@ export interface DigitalEmployeeTokenAdapter {
   findKweaverToken(agentId: string): Promise<string | undefined>;
 
   /**
+   * Finds the BKN scope for one digital employee.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @returns The comma-separated BKN id list when present, otherwise `undefined`.
+   */
+  findBknScope(agentId: string): Promise<string | undefined>;
+
+  /**
+   * Writes or replaces the digital employee record.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @param token KWeaver token to store, or `null` when not configured.
+   * @param bknScope Comma-separated BKN id list to store, or `null` when not configured.
+   */
+  upsertDigitalEmployee(
+    agentId: string,
+    token: string | null,
+    bknScope: string | null
+  ): Promise<void>;
+
+  /**
    * Writes or replaces the KWeaver token for one digital employee.
    *
    * @param agentId Digital employee id, equal to the OpenClaw agent id.
    * @param token KWeaver token to store, or `null` when not configured.
    */
   upsertKweaverToken(agentId: string, token: string | null): Promise<void>;
+
+  /**
+   * Writes or replaces the BKN scope for one digital employee.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @param bknScope Comma-separated BKN id list to store, or `null` when not configured.
+   */
+  upsertBknScope(agentId: string, bknScope: string | null): Promise<void>;
 
   /**
    * Removes the KWeaver token for one digital employee.
@@ -39,8 +68,12 @@ interface DigitalEmployeeTokenRow extends RowDataPacket {
   kweaver_token: string | null;
 }
 
+interface DigitalEmployeeBknScopeRow extends RowDataPacket {
+  bkn_scope: string | null;
+}
+
 /**
- * Adapter that exposes digital employee token persistence to application logic.
+ * Adapter that exposes digital employee persistence to application logic.
  */
 export class DefaultDigitalEmployeeTokenAdapter implements DigitalEmployeeTokenAdapter {
   /**
@@ -71,6 +104,51 @@ export class DefaultDigitalEmployeeTokenAdapter implements DigitalEmployeeTokenA
   }
 
   /**
+   * Finds the BKN scope for one digital employee.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @returns The comma-separated BKN id list when present, otherwise `undefined`.
+   */
+  public async findBknScope(agentId: string): Promise<string | undefined> {
+    const [rows] = await this.pool.execute<DigitalEmployeeBknScopeRow[]>(
+      [
+        "SELECT bkn_scope FROM t_digital_employee",
+        "WHERE id = :agentId AND is_deleted = FALSE",
+        "LIMIT 1"
+      ].join(" "),
+      { agentId }
+    );
+    const bknScope = rows[0]?.bkn_scope;
+
+    return bknScope === null ? undefined : bknScope;
+  }
+
+  /**
+   * Writes or replaces the digital employee record.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @param token KWeaver token to store, or `null` when not configured.
+   * @param bknScope Comma-separated BKN id list to store, or `null` when not configured.
+   */
+  public async upsertDigitalEmployee(
+    agentId: string,
+    token: string | null,
+    bknScope: string | null
+  ): Promise<void> {
+    await this.pool.execute(
+      [
+        "INSERT INTO t_digital_employee (id, kweaver_token, bkn_scope, is_deleted)",
+        "VALUES (:agentId, :token, :bknScope, FALSE)",
+        "ON DUPLICATE KEY UPDATE",
+        "kweaver_token = VALUES(kweaver_token),",
+        "bkn_scope = VALUES(bkn_scope),",
+        "is_deleted = FALSE"
+      ].join(" "),
+      { agentId, token, bknScope }
+    );
+  }
+
+  /**
    * Writes or replaces the KWeaver token for one digital employee.
    *
    * @param agentId Digital employee id, equal to the OpenClaw agent id.
@@ -93,13 +171,39 @@ export class DefaultDigitalEmployeeTokenAdapter implements DigitalEmployeeTokenA
   }
 
   /**
+   * Writes or replaces the BKN scope for one digital employee.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @param bknScope Comma-separated BKN id list to store, or `null` when not configured.
+   */
+  public async upsertBknScope(
+    agentId: string,
+    bknScope: string | null
+  ): Promise<void> {
+    await this.pool.execute(
+      [
+        "INSERT INTO t_digital_employee (id, bkn_scope, is_deleted)",
+        "VALUES (:agentId, :bknScope, FALSE)",
+        "ON DUPLICATE KEY UPDATE",
+        "bkn_scope = VALUES(bkn_scope),",
+        "is_deleted = FALSE"
+      ].join(" "),
+      { agentId, bknScope }
+    );
+  }
+
+  /**
    * Removes the KWeaver token for one digital employee.
    *
    * @param agentId Digital employee id, equal to the OpenClaw agent id.
    */
   public async deleteKweaverToken(agentId: string): Promise<void> {
     await this.pool.execute(
-      "UPDATE t_digital_employee SET kweaver_token = NULL WHERE id = :agentId",
+      [
+        "UPDATE t_digital_employee",
+        "SET kweaver_token = NULL, bkn_scope = NULL",
+        "WHERE id = :agentId"
+      ].join(" "),
       { agentId }
     );
   }
