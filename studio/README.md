@@ -8,23 +8,25 @@
 
 ## 开发模式
 
+### 依赖
+
+- v2026.3.11 版本的 OpenClaw
+- mariadb
+
 ### 准备
 
 1. 部署 OpenClaw 项目。项目地址：https://openclaw.ai 或从 GitHub：https://github.com/openclaw/openclaw
-2. 执行 `openclaw gateway` 启动 OpenClaw
-3. 完成 OpenClaw 配置后，从 `openclaw.json` 中复制 `gateway.auth.token`
-4. 执行 `openclaw gateway status`，从 `Gateway: bind=loopback (127.0.0.1), port=19001 (env/config)` 记住 OpenClaw 网关地址和端口
+2. 执行 `openclaw onboard` 配置 OpenClaw
+3. 执行 `openclaw gateway` 启动 OpenClaw
 
 ### 启动
 
 1. 执行 `npm install` 安装依赖
-2. 重命名 `.env.example` → `.env`，配置 OpenClaw 连接信息以及 OpenClaw 的 Auth Token。
-   如需转发 KWeaver Core 请求，可额外配置 `KWEAVER_BASE_URL`。
+2. 复制 `.env.example` → `.env`，填写环境变量信息
 3. 默认使用仓库 `assets/` 目录中已提交的 Ed25519 PEM 私钥和 PEM 公钥，用于调用 OpenClaw Gateway 接口时进行签名
 4. 执行 `npm run init:agents` 初始化 OpenClaw 默认配置、builtin agents 以及 extensions
 5. 执行 `npm run build` 构建
-6. 执行 `NODE_ENV=development npm run dev` 启动服务
-
+6. 执行 `NODE_ENV=development npm run dev` 启动服务，
 
 ### 调试
 
@@ -49,7 +51,12 @@
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "env": {
-                "NODE_ENV": "development"
+                "NODE_ENV": "development",
+                "DB_HOST": "127.0.0.1",
+                "DB_PORT": "3306",
+                "DB_USER": "<mariad_db_user>",
+                "DB_PASSWORD": "<mariad_db_password>",
+                "DB_NAME": "kweaver"
             }
         }
     ]
