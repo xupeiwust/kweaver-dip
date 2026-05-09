@@ -39,8 +39,10 @@ import {
   readOpenClawGatewayConfigFromConfig,
   readOpenClawGatewayTokenFromConfig,
   refreshOpenClawRuntimeEnv,
+  resolveDefaultKweaverBaseUrl,
   resolveDefaultOpenClawGatewayAddress,
   resolveExternalOpenClawHost,
+  resolveHostAddress,
   resolveInjectedPath,
   resolveOpenClawLocalPathsFromEnv,
   stripWrappingQuotes,
@@ -100,7 +102,7 @@ describe("readOpenClawDetectedConfigFromEnv", () => {
     ).resolves.toEqual({
       openclaw_address: "ws://studio.example.com:18789",
       openclaw_token: "config-token",
-      kweaver_base_url: "http://bkn-backend-svc:13014"
+      kweaver_base_url: "http://studio.example.com:3000"
     });
 
     await expect(readOpenClawGatewayConfigFromConfig(configPath)).resolves.toEqual({
@@ -202,6 +204,38 @@ describe("readOpenClawDetectedConfigFromEnv", () => {
         18789
       )
     ).toBe("ws://[::1]:18789");
+  });
+
+  it("resolves host address from request-derived values", () => {
+    expect(resolveHostAddress("https://studio.example.com:3000/path")).toBe(
+      "studio.example.com:3000"
+    );
+    expect(resolveHostAddress("studio.example.com:3000, proxy.example.com")).toBe(
+      "studio.example.com:3000"
+    );
+    expect(resolveHostAddress("[::1]:3000")).toBe("[::1]:3000");
+    expect(resolveHostAddress(undefined)).toBe("127.0.0.1");
+  });
+
+  it("resolves default KWeaver base URL from host address", () => {
+    expect(resolveDefaultKweaverBaseUrl({}, "studio.example.com:3000")).toBe(
+      "http://studio.example.com:3000"
+    );
+    expect(
+      resolveDefaultKweaverBaseUrl(
+        { USE_EXTERNAL_OPENCLAW: "true" },
+        "studio.example.com:3000"
+      )
+    ).toBe("http://studio.example.com:3000");
+    expect(
+      resolveDefaultKweaverBaseUrl(
+        { USE_EXTERNAL_OPENCLAW: "true" },
+        "https://studio.example.com/guide/openclaw-config"
+      )
+    ).toBe("https://studio.example.com");
+    expect(
+      resolveDefaultKweaverBaseUrl({ USE_EXTERNAL_OPENCLAW: "true" }, "[::1]:3000")
+    ).toBe("http://[::1]:3000");
   });
 });
 
@@ -419,7 +453,7 @@ describe("DefaultGuideLogic", () => {
       await expect(logic.getOpenClawConfig()).resolves.toEqual({
         openclaw_address: "ws://127.0.0.1:19001",
         openclaw_token: "token-1",
-        kweaver_base_url: "http://bkn-backend-svc:13014"
+        kweaver_base_url: "http://127.0.0.1"
       });
       expect(execFile).not.toHaveBeenCalled();
     } finally {
@@ -524,6 +558,53 @@ describe("DefaultGuideLogic", () => {
         delete process.env.KWEAVER_BASE_URL;
       } else {
         process.env.KWEAVER_BASE_URL = prevKweaverBaseUrl;
+      }
+      fakeHomeForOsMock = process.env.HOME ?? "/tmp";
+      await rm(studioRootDir, { recursive: true, force: true });
+    }
+  });
+
+  it("initializes with host KWeaver URL when using host OpenClaw", async () => {
+    const studioRootDir = await mkdtemp(join(tmpdir(), "dip-studio-guide-init-host-"));
+    fakeHomeForOsMock = studioRootDir;
+    const execFile = vi.fn().mockResolvedValue({
+      stdout: "ok",
+      stderr: ""
+    });
+    const gatewayConnector = {
+      reconfigureConnection: vi.fn(),
+      connect: vi.fn().mockResolvedValue(undefined)
+    };
+    const studioConfigAdapter = createConfigAdapterDouble();
+    const prevUseExternalOpenClaw = process.env.USE_EXTERNAL_OPENCLAW;
+    process.env.USE_EXTERNAL_OPENCLAW = "true";
+    const logic = new DefaultGuideLogic({
+      studioRootDir,
+      commandRunner: {
+        execFile
+      },
+      gatewayConnector,
+      studioConfigAdapter
+    });
+
+    try {
+      await expect(
+        logic.initialize({
+          openclaw_address: "ws://studio.example.com:19001",
+          openclaw_token: "token-1"
+        })
+      ).resolves.toBeUndefined();
+
+      expect(studioConfigAdapter.upsertStudioConfig).toHaveBeenCalledWith({
+        kweaver_base_url: "http://studio.example.com",
+        openclaw_address: "ws://studio.example.com:19001",
+        openclaw_token: "token-1"
+      });
+    } finally {
+      if (prevUseExternalOpenClaw === undefined) {
+        delete process.env.USE_EXTERNAL_OPENCLAW;
+      } else {
+        process.env.USE_EXTERNAL_OPENCLAW = prevUseExternalOpenClaw;
       }
       fakeHomeForOsMock = process.env.HOME ?? "/tmp";
       await rm(studioRootDir, { recursive: true, force: true });

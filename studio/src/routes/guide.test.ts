@@ -2,7 +2,11 @@ import type { NextFunction, Request, Response } from "express";
 import { describe, expect, it, vi } from "vitest";
 
 import { HttpError } from "../errors/http-error";
-import { createGuideRouter, readInitializeGuideRequestBody } from "./guide";
+import {
+  createGuideRouter,
+  readInitializeGuideRequestBody,
+  readRequestOrigin
+} from "./guide";
 
 /**
  * Creates a minimal response double with chainable methods.
@@ -180,13 +184,16 @@ describe("createGuideRouter", () => {
     const next = vi.fn<NextFunction>();
 
     await layer?.route?.stack[0]?.handle({
+      protocol: "http",
       headers: {
-        host: "studio.example.com"
+        host: "studio.example.com",
+        "x-forwarded-proto": "https"
       }
     } as Request, response, next);
 
     expect(getOpenClawConfig).toHaveBeenCalledWith({
-      requestHost: "studio.example.com"
+      requestHost: "studio.example.com",
+      requestOrigin: "https://studio.example.com"
     });
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith({
@@ -195,6 +202,17 @@ describe("createGuideRouter", () => {
       kweaver_base_url: "https://kweaver.example.com"
     });
     expect(next).not.toHaveBeenCalled();
+  });
+
+  it("reads request origin from forwarded proto and host", () => {
+    expect(
+      readRequestOrigin({
+        headers: {
+          "x-forwarded-host": "studio.example.com:3000",
+          "x-forwarded-proto": "https"
+        }
+      } as Request)
+    ).toBe("https://studio.example.com:3000");
   });
 
   it("forwards logic errors from initialize requests", async () => {

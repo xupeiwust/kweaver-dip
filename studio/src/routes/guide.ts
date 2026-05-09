@@ -46,7 +46,8 @@ export function createGuideRouter(
       try {
         response.status(200).json(
           await logic.getOpenClawConfig({
-            requestHost: readRequestHost(request)
+            requestHost: readRequestHost(request),
+            requestOrigin: readRequestOrigin(request)
           })
         );
       } catch (error) {
@@ -92,6 +93,28 @@ export function readRequestHost(request: Request): string | undefined {
   }
 
   return forwardedHost ?? request.headers.host;
+}
+
+/**
+ * Reads the best available request origin from proxy-aware request headers.
+ *
+ * @param request Express request.
+ * @returns The HTTP(S) origin used to access this guide endpoint.
+ */
+export function readRequestOrigin(request: Request): string | undefined {
+  const host = readRequestHost(request);
+
+  if (host === undefined) {
+    return undefined;
+  }
+
+  const forwardedProto = request.headers["x-forwarded-proto"];
+  const rawProtocol = Array.isArray(forwardedProto)
+    ? forwardedProto[0]
+    : forwardedProto;
+  const protocol = rawProtocol?.split(",", 1)[0]?.trim() || request.protocol || "http";
+
+  return `${protocol}://${host}`;
 }
 
 /**

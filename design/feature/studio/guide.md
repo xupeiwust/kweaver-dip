@@ -26,13 +26,12 @@ opt 配置 OpenClaw 连接信息
   alt 未配置 OpenClaw 连接
     BE ->> OC: 从 openclaw.json 中读取 gateway.port 和 gateway.auth.token
       alt 使用外置 OpenClaw
-        SW ->> SW: 填充 OpenClaw 网关地址：ws://<hostIP>:<gateway.port>
+        BE ->> SW: 填充 OpenClaw 网关地址：ws://<hostIP>:<gateway.port>
       end
       alt 使用内置 OpenClaw
-        SW ->> SW: 填充 OpenClaw 网关地址：ws://127.0.0.1:<gateway.port>
+        BE ->> SW: 填充 OpenClaw 网关地址：ws://127.0.0.1:<gateway.port>
       end
-    BE ->> SW: 填充 OpenClaw 网关 Token
-    BE ->> SW: 填充 KWeaver 默认 SVC 地址：http://bkn-backend-svc:13014
+      BE ->> SW: 填充 KWeaver 地址：<hostAddress>
   end
 end
 
@@ -67,8 +66,8 @@ end
 Studio Backend 读取完配置后，向前端返回配置信息，用户可以在 Web 修改配置信息。配置项包括：
 
 * OpenClaw 网关连接地址
-* OpenClaw 网关 Token
-* KWeaver 服务地址（访问 KWeaver API 需要，可选）
+* OpenClaw 网关 token
+* KWeaver 服务地址
 
 用户修改并确认配置后发送初始化请求到 Studio Backend， Studio Backend 执行初始化操作：
 

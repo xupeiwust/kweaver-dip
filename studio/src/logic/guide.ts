@@ -205,6 +205,11 @@ export interface OpenClawDetectedConfigOptions {
    * Host observed on the incoming HTTP request, used for external OpenClaw mode.
    */
   requestHost?: string;
+
+  /**
+   * Origin observed on the incoming HTTP request, used as host KWeaver URL.
+   */
+  requestOrigin?: string;
 }
 
 /**
@@ -344,14 +349,17 @@ export class DefaultGuideLogic implements GuideLogic {
     const localPaths = resolveOpenClawLocalPathsFromEnv(process.env, this.studioRootDir);
     const normalized = normalizeInitializeGuideRequest(request, localPaths);
     const envFilePath = join(this.studioRootDir, ".env");
+    const kweaverBaseUrl =
+      normalized.kweaver_base_url ??
+      resolveDefaultKweaverBaseUrl(process.env, normalized.host);
 
     await this.studioConfigAdapter.upsertStudioConfig({
-      kweaver_base_url: normalized.kweaver_base_url ?? "http://bkn-backend-svc:13014",
+      kweaver_base_url: kweaverBaseUrl,
       openclaw_address: normalized.openclaw_address,
       openclaw_token: normalized.openclaw_token
     });
     setStudioRuntimeConfig({
-      kweaverBaseUrl: normalized.kweaver_base_url ?? "http://bkn-backend-svc:13014",
+      kweaverBaseUrl: kweaverBaseUrl,
       openClawGatewayUrl: normalized.openclaw_address,
       openClawGatewayToken: normalized.openclaw_token
     });
@@ -464,6 +472,7 @@ export async function readOpenClawDetectedConfig(options: {
   envSource: NodeJS.ProcessEnv;
   openClawConfigPath: string;
   requestHost?: string;
+  requestOrigin?: string;
 }): Promise<OpenClawDetectedConfig> {
   const cachedConfig = getStudioRuntimeConfig();
 
@@ -499,7 +508,10 @@ export async function readOpenClawDetectedConfig(options: {
     openclaw_token: openclawToken,
     kweaver_base_url:
       readOptionalString(options.envSource.KWEAVER_BASE_URL) ??
-      "http://bkn-backend-svc:13014"
+      resolveDefaultKweaverBaseUrl(
+        options.envSource,
+        options.requestOrigin ?? options.requestHost
+      )
   };
 }
 
@@ -556,6 +568,44 @@ export function resolveDefaultOpenClawGatewayAddress(
   const normalizedHost = host.includes(":") ? `[${host}]` : host;
 
   return trimTrailingGatewaySlash(buildGatewayUrl("ws", normalizedHost, gatewayPort));
+}
+
+/**
+ * Resolves the default KWeaver service URL shown during Studio initialization.
+ *
+ * KWeaver is reached through the same host/origin that reaches the guide endpoint.
+ *
+ * @param _envSource Environment variable source kept for call-site compatibility.
+ * @param addressSource Origin/host observed from request headers, or parsed OpenClaw host.
+ * @returns The default KWeaver HTTP base URL.
+ */
+export function resolveDefaultKweaverBaseUrl(
+  _envSource: NodeJS.ProcessEnv,
+  addressSource?: string
+): string {
+  const source = readOptionalString(addressSource);
+  if (source?.startsWith("http://") || source?.startsWith("https://")) {
+    return new URL(source).origin;
+  }
+
+  const host = resolveHostAddress(addressSource);
+
+  return `http://${host}`;
+}
+
+/**
+ * Resolves the best host address from request-derived host or origin values.
+ *
+ * @param addressSource Raw origin, Host, or X-Forwarded-Host value.
+ * @returns The first normalized host address, preserving a port when present.
+ */
+export function resolveHostAddress(addressSource: string | undefined): string {
+  const source = readOptionalString(addressSource);
+  if (source?.startsWith("http://") || source?.startsWith("https://")) {
+    return new URL(source).host;
+  }
+
+  return source?.split(",", 1)[0]?.trim() || "127.0.0.1";
 }
 
 /**
@@ -736,9 +786,9 @@ export function isExternalOpenClawEnabled(value: string | undefined): boolean {
  * @returns The normalized host name without port.
  */
 export function resolveExternalOpenClawHost(requestHost: string | undefined): string {
-  const firstHost = readOptionalString(requestHost)?.split(",", 1)[0]?.trim();
+  const firstHost = resolveHostAddress(requestHost);
 
-  if (firstHost === undefined || firstHost === "") {
+  if (firstHost === "") {
     return "127.0.0.1";
   }
 
