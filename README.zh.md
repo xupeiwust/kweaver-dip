@@ -11,6 +11,7 @@
 KWeaver DIP 定位为企业级数字员工平台，基于 [KWeaver Core](https://github.com/kweaver-ai/kweaver-core) 开发；以业务知识网络为底座，提供 AI 原生的数字员工开发与管理能力，使企业智能可理解、可执行、可治理。
 
 - 该平台基于 [KWeaver Core](https://github.com/kweaver-ai/kweaver-core) 和 [OpenClaw](https://github.com/openclaw/openclaw) 构建的数字员工的能力。
+- 新手入门请查看 [产品文档](https://kweaver-ai.feishu.cn/wiki/IlTVwwjVpin6eWkBGZgcuucGnNe)
 
 ## 安装与配置使用 KWeaver DIP
 
