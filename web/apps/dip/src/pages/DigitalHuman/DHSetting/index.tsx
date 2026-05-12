@@ -38,6 +38,7 @@ const DHSetting = () => {
     digitalHumanId,
     detail,
     bkn,
+    appAccount,
     kweaverToken,
     skills,
     channel,
@@ -98,6 +99,7 @@ const DHSetting = () => {
       const creature = basic.creature?.trim() || undefined
       const soul = basic.soul?.trim() || undefined
       const skillNames = ensureRequiredPresetSkillNames(skills.map((skill) => skill.name))
+      const appIdPatch = appAccount?.id ?? (kweaverToken === null ? null : undefined)
 
       const createBody: CreateDigitalHumanRequest = {
         name,
@@ -107,6 +109,7 @@ const DHSetting = () => {
         skills: skillNames,
         bkn,
         ...(typeof kweaverToken === 'string' ? { kweaver_token: kweaverToken } : {}),
+        ...(appAccount?.id ? { app_id: appAccount.id } : {}),
         ...(channel !== undefined ? { channel } : {}),
       }
 
@@ -118,6 +121,7 @@ const DHSetting = () => {
           skills: skillNames,
           bkn,
           ...(kweaverToken !== undefined ? { kweaver_token: kweaverToken } : {}),
+          ...(appIdPatch !== undefined ? { app_id: appIdPatch } : {}),
           ...(channel !== undefined ? { channel } : {}),
         }
         await updateDigitalHuman(digitalHumanId, updateBody)

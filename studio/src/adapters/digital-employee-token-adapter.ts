@@ -5,6 +5,14 @@ import type { Pool, RowDataPacket } from "mysql2/promise";
  */
 export interface DigitalEmployeeTokenAdapter {
   /**
+   * Finds the application account id for one digital employee.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @returns The application account id when present, otherwise `undefined`.
+   */
+  findAppId(agentId: string): Promise<string | undefined>;
+
+  /**
    * Finds the KWeaver token for one digital employee.
    *
    * @param agentId Digital employee id, equal to the OpenClaw agent id.
@@ -24,14 +32,24 @@ export interface DigitalEmployeeTokenAdapter {
    * Writes or replaces the digital employee record.
    *
    * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @param appId Application account id to store, or `null` when not configured.
    * @param token KWeaver token to store, or `null` when not configured.
    * @param bknScope Comma-separated BKN id list to store, or `null` when not configured.
    */
   upsertDigitalEmployee(
     agentId: string,
+    appId: string | null,
     token: string | null,
     bknScope: string | null
   ): Promise<void>;
+
+  /**
+   * Writes or replaces the application account id for one digital employee.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @param appId Application account id to store, or `null` when not configured.
+   */
+  upsertAppId(agentId: string, appId: string | null): Promise<void>;
 
   /**
    * Writes or replaces the KWeaver token for one digital employee.
@@ -68,6 +86,10 @@ interface DigitalEmployeeTokenRow extends RowDataPacket {
   kweaver_token: string | null;
 }
 
+interface DigitalEmployeeAppIdRow extends RowDataPacket {
+  app_id: string | null;
+}
+
 interface DigitalEmployeeBknScopeRow extends RowDataPacket {
   bkn_scope: string | null;
 }
@@ -82,6 +104,26 @@ export class DefaultDigitalEmployeeTokenAdapter implements DigitalEmployeeTokenA
    * @param pool MariaDB connection pool.
    */
   public constructor(private readonly pool: Pool) {}
+
+  /**
+   * Finds the application account id for one digital employee.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @returns The application account id when present, otherwise `undefined`.
+   */
+  public async findAppId(agentId: string): Promise<string | undefined> {
+    const [rows] = await this.pool.execute<DigitalEmployeeAppIdRow[]>(
+      [
+        "SELECT app_id FROM t_digital_employee",
+        "WHERE id = :agentId AND is_deleted = FALSE",
+        "LIMIT 1"
+      ].join(" "),
+      { agentId }
+    );
+    const appId = rows[0]?.app_id;
+
+    return appId === null ? undefined : appId;
+  }
 
   /**
    * Finds the KWeaver token for one digital employee.
@@ -127,24 +169,49 @@ export class DefaultDigitalEmployeeTokenAdapter implements DigitalEmployeeTokenA
    * Writes or replaces the digital employee record.
    *
    * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @param appId Application account id to store, or `null` when not configured.
    * @param token KWeaver token to store, or `null` when not configured.
    * @param bknScope Comma-separated BKN id list to store, or `null` when not configured.
    */
   public async upsertDigitalEmployee(
     agentId: string,
+    appId: string | null,
     token: string | null,
     bknScope: string | null
   ): Promise<void> {
     await this.pool.execute(
       [
-        "INSERT INTO t_digital_employee (id, kweaver_token, bkn_scope, is_deleted)",
-        "VALUES (:agentId, :token, :bknScope, FALSE)",
+        "INSERT INTO t_digital_employee (id, app_id, kweaver_token, bkn_scope, is_deleted)",
+        "VALUES (:agentId, :appId, :token, :bknScope, FALSE)",
         "ON DUPLICATE KEY UPDATE",
+        "app_id = VALUES(app_id),",
         "kweaver_token = VALUES(kweaver_token),",
         "bkn_scope = VALUES(bkn_scope),",
         "is_deleted = FALSE"
       ].join(" "),
-      { agentId, token, bknScope }
+      { agentId, appId, token, bknScope }
+    );
+  }
+
+  /**
+   * Writes or replaces the application account id for one digital employee.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @param appId Application account id to store, or `null` when not configured.
+   */
+  public async upsertAppId(
+    agentId: string,
+    appId: string | null
+  ): Promise<void> {
+    await this.pool.execute(
+      [
+        "INSERT INTO t_digital_employee (id, app_id, is_deleted)",
+        "VALUES (:agentId, :appId, FALSE)",
+        "ON DUPLICATE KEY UPDATE",
+        "app_id = VALUES(app_id),",
+        "is_deleted = FALSE"
+      ].join(" "),
+      { agentId, appId }
     );
   }
 
@@ -201,7 +268,7 @@ export class DefaultDigitalEmployeeTokenAdapter implements DigitalEmployeeTokenA
     await this.pool.execute(
       [
         "UPDATE t_digital_employee",
-        "SET kweaver_token = NULL, bkn_scope = NULL",
+        "SET app_id = NULL, kweaver_token = NULL, bkn_scope = NULL",
         "WHERE id = :agentId"
       ].join(" "),
       { agentId }

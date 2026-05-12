@@ -195,6 +195,21 @@ export interface BknEntry {
 }
 
 /**
+ * Application account projection returned with digital-human details.
+ */
+export interface DigitalHumanAppAccount {
+  /**
+   * Application account id.
+   */
+  id: string;
+
+  /**
+   * Application account name.
+   */
+  name: string;
+}
+
+/**
  * Supported IM channel providers for OpenClaw `bindings` / `channels` config.
  */
 export type DigitalHumanChannelType = "feishu" | "dingtalk";
@@ -271,6 +286,12 @@ export interface CreateDigitalHumanRequest {
   kweaver_token?: string;
 
   /**
+   * KWeaver application account id used to resolve account details.
+   * Written to `t_digital_employee.app_id`.
+   */
+  app_id?: string;
+
+  /**
    * Channel binding configuration.
    */
   channel?: ChannelConfig;
@@ -317,6 +338,11 @@ export interface CreateDigitalHumanResult {
   bkn?: BknEntry[];
 
   /**
+   * Bound KWeaver application account.
+   */
+  app_account?: DigitalHumanAppAccount;
+
+  /**
    * Channel binding configuration.
    */
   channel?: ChannelConfig;
@@ -355,6 +381,11 @@ export interface DigitalHumanDetail {
    * Business Knowledge Network entries (from `t_digital_employee.bkn_scope`).
    */
   bkn?: BknEntry[];
+
+  /**
+   * Bound KWeaver application account (from `t_digital_employee.app_id`).
+   */
+  app_account?: DigitalHumanAppAccount;
 
   /**
    * Skill names currently configured on the agent.
@@ -411,6 +442,13 @@ export interface UpdateDigitalHumanRequest {
   kweaver_token?: string | null;
 
   /**
+   * KWeaver application account id update.
+   * A non-empty string writes/replaces `t_digital_employee.app_id`;
+   * `null` removes it.
+   */
+  app_id?: string | null;
+
+  /**
    * Channel binding (same semantics as create).
    */
   channel?: ChannelConfig;
@@ -428,5 +466,6 @@ export interface UpdateDigitalHumanResult {
   /** Skill ids currently on the agent. */
   skills?: string[];
   bkn?: BknEntry[];
+  app_account?: DigitalHumanAppAccount;
   channel?: ChannelConfig;
 }

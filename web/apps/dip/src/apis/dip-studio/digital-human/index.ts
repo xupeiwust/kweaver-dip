@@ -22,6 +22,7 @@ export type {
   CreateDigitalHumanResponse,
   DeleteDigitalHumanDeleteFiles,
   DigitalHuman,
+  DigitalHumanAppAccount,
   DigitalHumanDetail,
   DigitalHumanList,
   DigitalHumanResponseRequest,

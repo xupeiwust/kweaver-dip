@@ -29,6 +29,7 @@ describe('DigitalHumanSetting/digitalHumanStore', () => {
       creature: '简介A',
       soul: '灵魂A',
       bkn: [{ id: 'u1' }],
+      app_account: { id: 'app-1', name: '应用账户A' },
       channel: { type: 'feishu' },
     } as any
     const skills = [{ name: '技能A' }, { name: '技能B' }] as any[]
@@ -39,6 +40,7 @@ describe('DigitalHumanSetting/digitalHumanStore', () => {
     expect(state.digitalHumanId).toBe('dh-1')
     expect(state.basic).toEqual({ name: '员工A', creature: '简介A', soul: '灵魂A' })
     expect(state.bkn).toEqual([{ id: 'u1' }])
+    expect(state.appAccount).toEqual({ id: 'app-1', name: '应用账户A' })
     expect(state.skills).toEqual([
       ...skills,
       { name: 'mcporter', built_in: false, type: 'official' },

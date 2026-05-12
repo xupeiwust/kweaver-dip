@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "../errors/http-error";
 import type { DigitalEmployeeTokenAdapter } from "../adapters/digital-employee-token-adapter";
 import type { OpenClawCronAdapter } from "../adapters/openclaw-cron-adapter";
+import type { UserManagementAdapter } from "../adapters/user-management-adapter";
 
 import type { AgentSkillsLogic } from "./agent-skills";
 import type { BknLogic } from "./bkn";
@@ -43,13 +44,27 @@ function stubDigitalEmployeeTokenAdapter(
   overrides?: Partial<DigitalEmployeeTokenAdapter>
 ): DigitalEmployeeTokenAdapter {
   return {
+    findAppId: vi.fn(),
     findKweaverToken: vi.fn(),
     findBknScope: vi.fn(),
     upsertDigitalEmployee: vi.fn().mockResolvedValue(undefined),
+    upsertAppId: vi.fn().mockResolvedValue(undefined),
     upsertKweaverToken: vi.fn().mockResolvedValue(undefined),
     upsertBknScope: vi.fn().mockResolvedValue(undefined),
     deleteKweaverToken: vi.fn().mockResolvedValue(undefined),
     markDigitalEmployeeDeleted: vi.fn().mockResolvedValue(undefined),
+    ...overrides
+  };
+}
+
+function stubUserManagementAdapter(
+  overrides?: Partial<UserManagementAdapter>
+): UserManagementAdapter {
+  return {
+    listApps: vi.fn(),
+    findAppById: vi.fn(),
+    createApp: vi.fn(),
+    createAppToken: vi.fn(),
     ...overrides
   };
 }
@@ -336,6 +351,43 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
       undefined,
       "user-token"
     );
+  });
+
+  it("getDigitalHuman resolves bound application account from app_id", async () => {
+    const id = "agent-app-account";
+    const ws = resolveTestWorkspace(id);
+    mkdirSync(ws, { recursive: true });
+    writeFileSync(join(ws, "IDENTITY.md"), "- Name: Alice\n", "utf8");
+    writeFileSync(join(ws, "SOUL.md"), "Soul text\n", "utf8");
+    const tokenAdapter = stubDigitalEmployeeTokenAdapter({
+      findAppId: vi.fn().mockResolvedValue("app-1")
+    });
+    const userManagementAdapter = stubUserManagementAdapter({
+      findAppById: vi.fn().mockResolvedValue({ id: "app-1", name: "应用账户A" })
+    });
+    const logic = new DefaultDigitalHumanLogic({
+      openClawAgentsAdapter: {
+        listAgents: vi.fn(),
+        createAgent: vi.fn(),
+        deleteAgent: vi.fn(),
+        getAgentFile: vi.fn().mockImplementation(async ({ name }: { name: string }) => ({
+          file: { content: readFileSync(join(ws, name), "utf8") }
+        })),
+        setAgentFile: vi.fn(),
+        getConfig: vi.fn(),
+        patchConfig: vi.fn()
+      } as never,
+      openClawCronAdapter: stubCronAdapter(),
+      agentSkillsLogic: stubAgentSkills(),
+      digitalEmployeeTokenAdapter: tokenAdapter,
+      userManagementAdapter
+    });
+
+    await expect(logic.getDigitalHuman(id, "user-token")).resolves.toMatchObject({
+      app_account: { id: "app-1", name: "应用账户A" }
+    });
+    expect(tokenAdapter.findAppId).toHaveBeenCalledWith(id);
+    expect(userManagementAdapter.findAppById).toHaveBeenCalledWith("app-1", "user-token");
   });
 
   it("getDigitalHuman intersects RDS BKN ids with items from knowledge networks", async () => {
@@ -1065,6 +1117,7 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
 
     expect(tokenAdapter.upsertDigitalEmployee).toHaveBeenCalledWith(
       "agent-secret",
+      null,
       "kw-token",
       null
     );
@@ -1093,6 +1146,7 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
     await logic.createDigitalHuman({
       id: "agent-bkn",
       name: "BKN Agent",
+      app_id: "app-1",
       bkn: [
         { name: "Knowledge 1", id: "kn-1" },
         { name: "Knowledge 2", id: "kn-2" }
@@ -1101,6 +1155,7 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
 
     expect(tokenAdapter.upsertDigitalEmployee).toHaveBeenCalledWith(
       "agent-bkn",
+      "app-1",
       null,
       "kn-1,kn-2"
     );
@@ -1195,6 +1250,7 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
     ]);
     expect(tokenAdapter.upsertDigitalEmployee).toHaveBeenCalledWith(
       result.id,
+      null,
       null,
       null
     );
@@ -1394,6 +1450,42 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
     ]);
     expect(tokenAdapter.upsertKweaverToken).toHaveBeenCalledWith(id, "new-token");
     expect(tokenAdapter.deleteKweaverToken).not.toHaveBeenCalled();
+  });
+
+  it("updateDigitalHuman replaces application account id in the database", async () => {
+    const id = "agent-app-id";
+    const setAgentFile = vi.fn().mockResolvedValue({ ok: true });
+    const tokenAdapter = stubDigitalEmployeeTokenAdapter({
+      findAppId: vi.fn().mockResolvedValue("app-2")
+    });
+    const userManagementAdapter = stubUserManagementAdapter({
+      findAppById: vi.fn().mockResolvedValue({ id: "app-2", name: "应用账户B" })
+    });
+    const logic = new DefaultDigitalHumanLogic({
+      openClawAgentsAdapter: {
+        listAgents: vi.fn(),
+        createAgent: vi.fn(),
+        deleteAgent: vi.fn(),
+        getAgentFile: vi.fn().mockImplementation(async ({ name }: { name: string }) => ({
+          file: {
+            content: name === "IDENTITY.md" ? "- Name: Old\n" : "Soul\n"
+          }
+        })),
+        setAgentFile,
+        listAgentFiles: vi.fn().mockResolvedValue({ agentId: id, files: [] }),
+        getConfig: vi.fn(),
+        patchConfig: vi.fn()
+      } as never,
+      openClawCronAdapter: stubCronAdapter(),
+      agentSkillsLogic: stubAgentSkills(),
+      digitalEmployeeTokenAdapter: tokenAdapter,
+      userManagementAdapter
+    });
+
+    const result = await logic.updateDigitalHuman(id, { app_id: "app-2" });
+
+    expect(tokenAdapter.upsertAppId).toHaveBeenCalledWith(id, "app-2");
+    expect(result.app_account).toEqual({ id: "app-2", name: "应用账户B" });
   });
 
   it("updateDigitalHuman removes KWeaver token from the database and clears BKN", async () => {

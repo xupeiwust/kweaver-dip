@@ -42,6 +42,20 @@ components:
         - appId
         - appSecret
 
+    DigitalHumanAppAccount:
+      type: object
+      description: 数字员工绑定的 KWeaver 应用账户信息
+      properties:
+        id:
+          type: string
+          description: 应用账户 ID
+        name:
+          type: string
+          description: 应用账户名称
+      required:
+        - id
+        - name
+
     DigitalHumanList:
       summary: 数字员工列表
       description: 每个元素与详情接口返回结构一致
@@ -117,6 +131,9 @@ components:
             当前业务知识网络范围。
           items:
             $ref: '#/components/schemas/BknEntry'
+        app_account:
+          $ref: '#/components/schemas/DigitalHumanAppAccount'
+          description: 已绑定的 KWeaver 应用账户；未绑定或账户不存在时省略
         skills:
           type: array
           description: |
@@ -173,6 +190,10 @@ components:
           maxLength: 255
           description: |
             KWeaver 应用账号 Token。该字段不会在详情或响应中回显。
+        app_id:
+          type: string
+          description: |
+            KWeaver 应用账号 ID。写入 `t_digital_employee.app_id`，详情接口会据此返回 `app_account`。
         channel:
           $ref: '#/components/schemas/ChannelConfig'
       required:
@@ -208,6 +229,8 @@ components:
             业务知识网络范围。
           items:
             $ref: '#/components/schemas/BknEntry'
+        app_account:
+          $ref: '#/components/schemas/DigitalHumanAppAccount'
         channel:
           $ref: '#/components/schemas/ChannelConfig'
       required:
@@ -217,7 +240,7 @@ components:
     UpdateDigitalHumanRequest:
       summary: 更新数字员工（部分字段）
       description: |
-        至少提供以下字段之一：`name`、`creature`、`icon_id`、`soul`、`skills`、`bkn`、`kweaver_token`、`channel`（仅出现上述键之一即可，其他未知键不计入）。
+        至少提供以下字段之一：`name`、`creature`、`icon_id`、`soul`、`skills`、`bkn`、`kweaver_token`、`app_id`、`channel`（仅出现上述键之一即可，其他未知键不计入）。
         若 `skills` / `bkn` 出现在 body 中，表示**整组替换**（可为空数组以清空）。
         `kweaver_token` 为非空字符串时写入/替换 Token；为 `null` 或空字符串时删除 Token，并清空已选择的 `bkn`。该字段不会在详情或响应中回显。
       type: object
@@ -246,6 +269,10 @@ components:
           nullable: true
           maxLength: 255
           description: 写入/替换或删除 KWeaver 应用账号 Token；删除时同步清空已选择的业务知识网络
+        app_id:
+          type: string
+          nullable: true
+          description: 写入/替换或删除 KWeaver 应用账号 ID；详情接口会据此返回 `app_account`
         channel:
           $ref: '#/components/schemas/ChannelConfig'
 
@@ -275,6 +302,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BknEntry'
+        app_account:
+          $ref: '#/components/schemas/DigitalHumanAppAccount'
         channel:
           $ref: '#/components/schemas/ChannelConfig'
       required:

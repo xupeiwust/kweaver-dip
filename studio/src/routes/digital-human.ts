@@ -14,6 +14,7 @@ import { HttpError } from "../errors/http-error";
 import {
   DefaultOpenClawAgentSkillsHttpClient
 } from "../infra/openclaw-agent-skills-http-client";
+import { DefaultUserManagementAdapter } from "../adapters/user-management-adapter";
 import { OpenClawGatewayClient } from "../infra/openclaw-gateway-client";
 import { createStudioDatabasePool } from "../infra/mariadb-client";
 import {
@@ -70,7 +71,8 @@ const digitalHumanLogic = new DefaultDigitalHumanLogic({
   openClawAgentsAdapter,
   openClawCronAdapter,
   agentSkillsLogic,
-  digitalEmployeeTokenAdapter
+  digitalEmployeeTokenAdapter,
+  userManagementAdapter: new DefaultUserManagementAdapter()
 });
 const builtInDigitalHumanLogic = new DefaultBuiltInDigitalHumanLogic();
 
@@ -89,6 +91,7 @@ const UPDATE_KEYS = [
   "skills",
   "bkn",
   "kweaver_token",
+  "app_id",
   "channel"
 ] as const;
 
@@ -112,7 +115,7 @@ function parseUpdateRequest(body: unknown): UpdateDigitalHumanRequest {
   if (!hasAny) {
     throw new HttpError(
       400,
-      "At least one of name, creature, icon_id, soul, skills, bkn, kweaver_token, or channel must be provided"
+      "At least one of name, creature, icon_id, soul, skills, bkn, kweaver_token, app_id, or channel must be provided"
     );
   }
 
@@ -169,6 +172,10 @@ function parseUpdateRequest(body: unknown): UpdateDigitalHumanRequest {
     patch.kweaver_token = parseKweaverTokenPatch(raw.kweaver_token);
   }
 
+  if ("app_id" in raw) {
+    patch.app_id = parseAppIdPatch(raw.app_id);
+  }
+
   if ("channel" in raw) {
     patch.channel = parseChannelBlock(raw.channel);
   }
@@ -206,6 +213,7 @@ function parseCreateRequest(body: unknown): CreateDigitalHumanRequest {
     skills: parseStringArray(raw.skills),
     bkn: parseBknArray(raw.bkn),
     kweaver_token: parseKweaverTokenCreate(raw.kweaver_token),
+    app_id: parseAppIdCreate(raw.app_id),
     channel: parseChannelBlock(raw.channel)
   };
 }
@@ -266,7 +274,11 @@ async function handleUpdateDigitalHuman(
   try {
     const id = resolveIdParam(request.params.id);
     const patch = parseUpdateRequest(request.body);
-    const result = await digitalHumanLogic.updateDigitalHuman(id, patch);
+    const result = await digitalHumanLogic.updateDigitalHuman(
+      id,
+      patch,
+      request.headers === undefined ? undefined : readOptionalBearerToken(request)
+    );
 
     response.status(200).json(result);
   } catch (error) {
@@ -592,6 +604,42 @@ function parseKweaverTokenPatch(value: unknown): string | null {
   if (trimmed.length > KWEAVER_TOKEN_MAX_LENGTH) {
     throw new HttpError(400, "kweaver_token must be at most 255 characters");
   }
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Parses the optional create-time application account id.
+ *
+ * @param value Raw request body field.
+ * @returns A trimmed application account id when provided, otherwise `undefined`.
+ * @throws HttpError when the field type is invalid.
+ */
+function parseAppIdCreate(value: unknown): string | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== "string") {
+    throw new HttpError(400, "app_id must be a string when provided");
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/**
+ * Parses update-time application account id semantics.
+ *
+ * @param value Raw request body field.
+ * @returns A trimmed application account id, or `null` when the client requests deletion.
+ * @throws HttpError when the field type is invalid.
+ */
+function parseAppIdPatch(value: unknown): string | null {
+  if (value === null) {
+    return null;
+  }
+  if (typeof value !== "string") {
+    throw new HttpError(400, "app_id must be a string or null when provided");
+  }
+  const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
 

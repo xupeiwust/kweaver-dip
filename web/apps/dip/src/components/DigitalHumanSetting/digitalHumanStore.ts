@@ -14,6 +14,9 @@ type DigitalHumanDetailForUI = Omit<DigitalHumanDetail, 'skills'> & {
   skills?: DigitalHumanSkill[]
 }
 
+type DigitalHumanAppAccountForUI = Pick<AppAccount, 'id' | 'name'> &
+  Partial<Pick<AppAccount, 'credential_type'>>
+
 /** 编辑态基础信息（对齐 DigitalHumanDetail 中的 name / description / creature / soul） */
 export type DigitalHumanBasic = Pick<DigitalHumanDetail, 'name' | 'creature' | 'soul'>
 
@@ -51,8 +54,8 @@ export interface DigitalHumanState {
   /** 知识源列表（对齐 DigitalHumanExtension.bkn） */
   bkn: BknEntry[]
 
-  /** 本次配置选择的应用账户；详情接口不回显历史账户时保持为空 */
-  appAccount?: AppAccount
+  /** 当前绑定的应用账户；详情接口返回 `{ id, name }` 时即认为已绑定 */
+  appAccount?: DigitalHumanAppAccountForUI
 
   /** 本次配置生成的 KWeaver Token；undefined 表示不更新，null 表示删除 */
   kweaverToken?: string | null
@@ -197,7 +200,7 @@ export const useDigitalHumanStore = create<DigitalHumanState>()((set) => ({
           soul: digitalHuman.soul ?? '',
         },
         bkn: digitalHuman.bkn ?? defaultBkn,
-        appAccount: undefined,
+        appAccount: digitalHuman.app_account,
         kweaverToken: undefined,
         skills: nextSkills,
         removedPresetSkillNames: [],
@@ -347,7 +350,7 @@ export const useDigitalHumanStore = create<DigitalHumanState>()((set) => ({
         soul: state.detail?.soul ?? '',
       },
       bkn: state.detail?.bkn ?? defaultBkn,
-      appAccount: undefined,
+      appAccount: state.detail?.app_account,
       kweaverToken: undefined,
       skills: ensureRequiredPresetSkills(state.detail?.skills ?? defaultSkills),
       removedPresetSkillNames: [],

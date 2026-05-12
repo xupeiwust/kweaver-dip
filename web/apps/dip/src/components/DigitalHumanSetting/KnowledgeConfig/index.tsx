@@ -50,7 +50,7 @@ const KnowledgeConfig = ({ readonly }: KnowledgeConfigProps) => {
     setSelectKnowledgeModalOpen(true)
   }
 
-  const openPolicyModalIfNeeded = async (account: AppAccount, nextBkn: BknEntry[]) => {
+  const openPolicyModalIfNeeded = async (account: Pick<AppAccount, 'id'>, nextBkn: BknEntry[]) => {
     if (nextBkn.length === 0) {
       updateBkn(nextBkn)
       return

@@ -15,6 +15,25 @@ function createPoolDouble(): Pool {
 }
 
 describe("DefaultDigitalEmployeeTokenAdapter", () => {
+  it("reads the application account id by agent id", async () => {
+    const pool = createPoolDouble();
+    vi.mocked(pool.execute).mockResolvedValue([
+      [{ app_id: "app-1" }],
+      []
+    ] as never);
+    const adapter = new DefaultDigitalEmployeeTokenAdapter(pool);
+
+    await expect(adapter.findAppId("agent-1")).resolves.toBe("app-1");
+    expect(pool.execute).toHaveBeenCalledWith(
+      [
+        "SELECT app_id FROM t_digital_employee",
+        "WHERE id = :agentId AND is_deleted = FALSE",
+        "LIMIT 1"
+      ].join(" "),
+      { agentId: "agent-1" }
+    );
+  });
+
   it("reads the token by agent id", async () => {
     const pool = createPoolDouble();
     vi.mocked(pool.execute).mockResolvedValue([
@@ -77,18 +96,38 @@ describe("DefaultDigitalEmployeeTokenAdapter", () => {
     vi.mocked(pool.execute).mockResolvedValue([[], []] as never);
     const adapter = new DefaultDigitalEmployeeTokenAdapter(pool);
 
-    await adapter.upsertDigitalEmployee("agent-1", "token-1", "kn-1,kn-2");
+    await adapter.upsertDigitalEmployee("agent-1", "app-1", "token-1", "kn-1,kn-2");
 
     expect(pool.execute).toHaveBeenCalledWith(
       [
-        "INSERT INTO t_digital_employee (id, kweaver_token, bkn_scope, is_deleted)",
-        "VALUES (:agentId, :token, :bknScope, FALSE)",
+        "INSERT INTO t_digital_employee (id, app_id, kweaver_token, bkn_scope, is_deleted)",
+        "VALUES (:agentId, :appId, :token, :bknScope, FALSE)",
         "ON DUPLICATE KEY UPDATE",
+        "app_id = VALUES(app_id),",
         "kweaver_token = VALUES(kweaver_token),",
         "bkn_scope = VALUES(bkn_scope),",
         "is_deleted = FALSE"
       ].join(" "),
-      { agentId: "agent-1", token: "token-1", bknScope: "kn-1,kn-2" }
+      { agentId: "agent-1", appId: "app-1", token: "token-1", bknScope: "kn-1,kn-2" }
+    );
+  });
+
+  it("upserts the application account id by agent id", async () => {
+    const pool = createPoolDouble();
+    vi.mocked(pool.execute).mockResolvedValue([[], []] as never);
+    const adapter = new DefaultDigitalEmployeeTokenAdapter(pool);
+
+    await adapter.upsertAppId("agent-1", "app-1");
+
+    expect(pool.execute).toHaveBeenCalledWith(
+      [
+        "INSERT INTO t_digital_employee (id, app_id, is_deleted)",
+        "VALUES (:agentId, :appId, FALSE)",
+        "ON DUPLICATE KEY UPDATE",
+        "app_id = VALUES(app_id),",
+        "is_deleted = FALSE"
+      ].join(" "),
+      { agentId: "agent-1", appId: "app-1" }
     );
   });
 
@@ -159,7 +198,7 @@ describe("DefaultDigitalEmployeeTokenAdapter", () => {
     expect(pool.execute).toHaveBeenCalledWith(
       [
         "UPDATE t_digital_employee",
-        "SET kweaver_token = NULL, bkn_scope = NULL",
+        "SET app_id = NULL, kweaver_token = NULL, bkn_scope = NULL",
         "WHERE id = :agentId"
       ].join(" "),
       { agentId: "agent-1" }

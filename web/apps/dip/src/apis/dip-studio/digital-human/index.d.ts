@@ -67,7 +67,15 @@ type DigitalHumanWriteBody = {
   bkn?: BknEntry[]
   /** KWeaver 应用账号 Token；写入后不会在详情或响应中回显 */
   kweaver_token?: string
+  /** KWeaver 应用账号 ID；写入 `t_digital_employee.app_id` */
+  app_id?: string
   channel?: ChannelConfig
+}
+
+/** 数字员工绑定的应用账号 */
+export interface DigitalHumanAppAccount {
+  id: string
+  name: string
 }
 
 /** 详情与创建/更新响应中的扩展字段（技能为 string[]） */
@@ -76,6 +84,7 @@ type DigitalHumanEntityOptional = {
   soul?: string
   skills?: string[]
   bkn?: BknEntry[]
+  app_account?: DigitalHumanAppAccount
   channel?: ChannelConfig
 }
 
@@ -87,6 +96,7 @@ export type DigitalHumanDetail = DigitalHuman & {
   soul: string
   skills?: string[]
   bkn?: BknEntry[]
+  app_account?: DigitalHumanAppAccount
   channel?: ChannelConfig
 }
 
@@ -125,6 +135,8 @@ export type UpdateDigitalHumanRequest = Partial<
 > & {
   /** 非空字符串表示写入/替换；null 表示删除 Token，并由后端清空 BKN 范围 */
   kweaver_token?: string | null
+  /** 非空字符串表示写入/替换；null 表示删除绑定应用账号 ID */
+  app_id?: string | null
 }
 
 /** 数字员工响应请求；允许任意扩展字段 */

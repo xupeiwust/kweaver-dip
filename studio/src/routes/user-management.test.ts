@@ -69,6 +69,7 @@ function findHandler(
 function createAdapterDouble(): UserManagementAdapter {
   return {
     listApps: vi.fn(),
+    findAppById: vi.fn(),
     createApp: vi.fn(),
     createAppToken: vi.fn()
   };

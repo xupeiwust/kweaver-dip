@@ -29,6 +29,18 @@ describe("DefaultUserManagementAdapter", () => {
     });
 
     await adapter.listApps({ keyword: "a" }, "token-1");
+    vi.mocked(client.forwardRequest).mockResolvedValueOnce({
+      status: 200,
+      headers: new Headers(),
+      body: JSON.stringify({
+        entries: [{ id: "app-1", name: "App 1", credential_type: "token" }],
+        total_count: 1
+      })
+    });
+    await expect(adapter.findAppById("app-1", "token-1")).resolves.toEqual({
+      id: "app-1",
+      name: "App 1"
+    });
     await adapter.createApp({ name: "a", password: "" }, "token-1");
     await adapter.createAppToken({ id: "app-1" }, "token-1");
 
@@ -49,13 +61,22 @@ describe("DefaultUserManagementAdapter", () => {
       2,
       "/api/user-management/v1/apps",
       {
+        method: "GET",
+        query: { limit: 1000, offset: 0 },
+        bearerToken: "token-1"
+      }
+    );
+    expect(client.forwardRequest).toHaveBeenNthCalledWith(
+      3,
+      "/api/user-management/v1/apps",
+      {
         method: "POST",
         body: { name: "a", password: "" },
         bearerToken: "token-1"
       }
     );
     expect(client.forwardRequest).toHaveBeenNthCalledWith(
-      3,
+      4,
       "/api/user-management/v1/console/app-tokens",
       {
         method: "POST",

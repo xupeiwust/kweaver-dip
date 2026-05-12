@@ -883,6 +883,7 @@ BknEntry 字段：
 | skills | string[] | 否 | 创建时要绑定的技能名称列表；重复值会按首次出现顺序去重 |
 | bkn | BknEntry[] | 否 | 业务知识网络范围 |
 | kweaver_token | string | 否 | KWeaver 应用账号 Token，最长 255 字符；不会在响应或详情中回显 |
+| app_id | string | 否 | KWeaver 应用账号 ID；详情接口会据此返回 `app_account: { id, name }` |
 | channel | ChannelConfig | 否 | 渠道配置；若同类型渠道中 AppID 已配置则返回 400 |
 
 响应：`201 application/json`
@@ -897,7 +898,7 @@ BknEntry 字段：
 
 请求：`application/json`
 
-至少提供以下字段之一：`name`、`creature`、`icon_id`、`soul`、`skills`、`bkn`、`kweaver_token`、`channel`。
+至少提供以下字段之一：`name`、`creature`、`icon_id`、`soul`、`skills`、`bkn`、`kweaver_token`、`app_id`、`channel`。
 
 | 参数 | 类型 | 是否必填 | 说明 |
 | -- | -- | -- | -- |
@@ -908,9 +909,10 @@ BknEntry 字段：
 | skills | string[] | 否 | 当前完整技能列表；出现时整组替换 |
 | bkn | BknEntry[] | 否 | 当前完整业务知识网络范围；出现时整组替换 |
 | kweaver_token | string \| null | 否 | 非空字符串会写入/替换 Token；`null` 或空字符串会删除 Token，并同步清空已选择的业务知识网络 |
+| app_id | string \| null | 否 | 非空字符串会写入/替换应用账号 ID；`null` 或空字符串会删除应用账号 ID |
 | channel | ChannelConfig | 否 | 渠道配置，语义同创建接口 |
 
-响应：`200 application/json`，结构与创建响应一致，但不回显 `kweaver_token`。
+响应：`200 application/json`，结构与创建响应一致，但不回显 `kweaver_token`；若绑定应用账户可返回 `app_account: { id, name }`。
 
 #### 创建会话键
 

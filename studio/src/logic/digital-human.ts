@@ -6,6 +6,7 @@ import { join } from "node:path";
 import type { DigitalEmployeeTokenAdapter } from "../adapters/digital-employee-token-adapter";
 import type { OpenClawAgentsAdapter } from "../adapters/openclaw-agents-adapter";
 import type { OpenClawCronAdapter } from "../adapters/openclaw-cron-adapter";
+import type { UserManagementAdapter } from "../adapters/user-management-adapter";
 import { HttpError } from "../errors/http-error";
 import type {
   BknEntry,
@@ -81,10 +82,12 @@ export interface DigitalHumanLogic {
    *
    * @param id The digital human identifier.
    * @param patch Fields to merge; omitted fields are left unchanged.
+   * @param bearerToken Optional bearer token forwarded to app-account detail requests.
    */
   updateDigitalHuman(
     id: string,
-    patch: UpdateDigitalHumanRequest
+    patch: UpdateDigitalHumanRequest,
+    bearerToken?: string
   ): Promise<UpdateDigitalHumanResult>;
 }
 
@@ -116,6 +119,11 @@ export interface DigitalHumanLogicOptions {
    * Logic used to fetch BKN knowledge network metadata.
    */
   bknLogic?: BknLogic;
+
+  /**
+   * Adapter used to resolve application account details from user-management.
+   */
+  userManagementAdapter?: UserManagementAdapter;
 }
 
 /**
@@ -127,6 +135,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
   private readonly agentSkillsLogic: AgentSkillsLogic;
   private readonly digitalEmployeeTokenAdapter?: DigitalEmployeeTokenAdapter;
   private readonly bknLogic: BknLogic;
+  private readonly userManagementAdapter?: UserManagementAdapter;
 
   /**
    * Creates the digital human logic.
@@ -139,6 +148,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
     this.agentSkillsLogic = options.agentSkillsLogic;
     this.digitalEmployeeTokenAdapter = options.digitalEmployeeTokenAdapter;
     this.bknLogic = options.bknLogic ?? new DefaultBknLogic();
+    this.userManagementAdapter = options.userManagementAdapter;
   }
 
   /**
@@ -194,7 +204,10 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
     }
 
     const template = mergeFilesToTemplate(identityContent, soulContent);
-    const bkn = await this.readBknEntries(id, bearerToken);
+    const [bkn, appAccount] = await Promise.all([
+      this.readBknEntries(id, bearerToken),
+      this.readAppAccount(id, bearerToken)
+    ]);
     let skills: string[] | undefined;
     try {
       const binding = await this.agentSkillsLogic.getAgentSkills(id);
@@ -213,6 +226,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
       icon_id: template.identity.icon_id,
       soul: template.soul,
       bkn,
+      ...(appAccount !== undefined ? { app_account: appAccount } : {}),
       skills,
       ...(channel !== undefined ? { channel } : {})
     };
@@ -247,6 +261,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
 
     await this.writeDigitalEmployeeRecordToDatabase(
       id,
+      request.app_id ?? null,
       request.kweaver_token ?? null,
       serializeBknScope(request.bkn)
     );
@@ -316,10 +331,12 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
    *
    * @param id Agent UUID.
    * @param patch Partial fields.
+   * @param bearerToken Optional bearer token forwarded to app-account detail requests.
    */
   public async updateDigitalHuman(
     id: string,
-    patch: UpdateDigitalHumanRequest
+    patch: UpdateDigitalHumanRequest,
+    bearerToken?: string
   ): Promise<UpdateDigitalHumanResult> {
     let identityContent: string;
     let soulContent: string;
@@ -352,6 +369,10 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
       await this.writeKweaverTokenToDatabase(id, patch.kweaver_token);
     }
 
+    if (patch.app_id !== undefined) {
+      await this.writeAppIdToDatabase(id, patch.app_id);
+    }
+
     if ("bkn" in patch || patch.kweaver_token === null) {
       await this.writeBknScopeToDatabase(id, merged.bkn);
     }
@@ -381,9 +402,12 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
       }
     }
 
-    const responseBkn = "bkn" in patch || patch.kweaver_token === null
-      ? merged.bkn
-      : await this.readBknEntries(id);
+    const [responseBkn, appAccount] = await Promise.all([
+      "bkn" in patch || patch.kweaver_token === null
+        ? Promise.resolve(merged.bkn)
+        : this.readBknEntries(id),
+      this.readAppAccount(id, bearerToken)
+    ]);
 
     return {
       id,
@@ -393,6 +417,7 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
       soul: merged.soul,
       skills: skillsOut,
       bkn: responseBkn,
+      ...(appAccount !== undefined ? { app_account: appAccount } : {}),
       channel:
         patch.channel !== undefined
           ? normalizeChannelForResponse(patch.channel)
@@ -503,11 +528,13 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
    * Persists a digital employee record and optional KWeaver token.
    *
    * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @param appId Application account id to write, or `null` when not configured.
    * @param token Token to write, or `null` when not configured.
    * @param bknScope Comma-separated BKN id list to write, or `null` when not configured.
    */
   private async writeDigitalEmployeeRecordToDatabase(
     agentId: string,
+    appId: string | null,
     token: string | null,
     bknScope: string | null
   ): Promise<void> {
@@ -517,9 +544,27 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
 
     await this.digitalEmployeeTokenAdapter.upsertDigitalEmployee(
       agentId,
+      appId,
       token,
       bknScope
     );
+  }
+
+  /**
+   * Persists an application account id update into the digital employee table.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @param appId Application account id to write, or `null` to remove it.
+   */
+  private async writeAppIdToDatabase(
+    agentId: string,
+    appId: string | null
+  ): Promise<void> {
+    if (this.digitalEmployeeTokenAdapter === undefined) {
+      return;
+    }
+
+    await this.digitalEmployeeTokenAdapter.upsertAppId(agentId, appId);
   }
 
   /**
@@ -596,6 +641,32 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
     return bknIds
       .map((id) => networksById.get(id))
       .filter((entry): entry is BknEntry => entry !== undefined);
+  }
+
+  /**
+   * Reads the bound application account id from RDS and resolves its display name.
+   *
+   * @param agentId Digital employee id, equal to the OpenClaw agent id.
+   * @param bearerToken Optional bearer token forwarded to user-management requests.
+   * @returns Bound application account projection for API responses.
+   */
+  private async readAppAccount(
+    agentId: string,
+    bearerToken?: string
+  ): Promise<{ id: string; name: string } | undefined> {
+    if (
+      this.digitalEmployeeTokenAdapter === undefined ||
+      this.userManagementAdapter === undefined
+    ) {
+      return undefined;
+    }
+
+    const appId = await this.digitalEmployeeTokenAdapter.findAppId(agentId);
+    if (appId === undefined || appId.trim().length === 0) {
+      return undefined;
+    }
+
+    return this.userManagementAdapter.findAppById(appId, bearerToken);
   }
 }
 

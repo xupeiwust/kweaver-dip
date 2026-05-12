@@ -26,6 +26,7 @@
 | 字段 | 数据类型 | 允许为空 | 索引 | 备注 |
 | -- | -- | -- | -- | -- |
 | id | CHAR(36) | NOT NULL | PK | 数字员工 ID，等同于 agentId |
-| kweaver_token | VARCHAR(255) |  |  | 数字员工的 KWeaver Token |
+| app_id | CHAR(36) |  |  | 数字员工绑定的应用账号 ID |
+| kweaver_token | VARCHAR(255) |  |  | 数字员工绑定的应用账号 token |
 | bkn_scope | VARCHAR(4096) |  |  | 数字员工的知识范围，逗号隔开的 id 列表 |
 | is_deleted | BOOLEAN |  |  | 标记数字员工是否被删除 |

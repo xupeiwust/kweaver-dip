@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS t_studio_config (
 
 CREATE TABLE IF NOT EXISTS t_digital_employee (
   id CHAR(36) NOT NULL COMMENT '数字员工 ID，等同于 agentId',
+  app_id CHAR(36) NULL COMMENT '数字员工绑定的应用账号 ID',
   kweaver_token VARCHAR(255) NULL COMMENT '数字员工的 KWeaver Token',
   bkn_scope VARCHAR(4096) NULL COMMENT '数字员工的知识范围，逗号隔开的 id 列表',
   is_deleted BOOLEAN NOT NULL DEFAULT FALSE COMMENT '标记数字员工是否被删除',

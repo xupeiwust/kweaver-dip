@@ -7,6 +7,28 @@ import {
 } from "../infra/isf-http-client";
 import { getEnv } from "../utils/env";
 
+const USER_MANAGEMENT_APP_PAGE_LIMIT = 1000;
+
+/**
+ * Minimal application account projection used by Studio.
+ */
+export interface UserManagementAppInfo {
+  /**
+   * Application account id.
+   */
+  id: string;
+
+  /**
+   * Application account name.
+   */
+  name: string;
+}
+
+interface UserManagementAppListBody {
+  entries?: unknown;
+  total_count?: unknown;
+}
+
 /**
  * Adapter for ISF `/user-management` APIs used by Studio.
  */
@@ -18,6 +40,17 @@ export interface UserManagementAdapter {
    * @param bearerToken Optional user bearer token.
    */
   listApps(query: IsfQuery, bearerToken?: string): Promise<IsfProxyResponse>;
+
+  /**
+   * Finds one application account by id using the user-management app list API.
+   *
+   * @param appId Application account id.
+   * @param bearerToken Optional user bearer token.
+   */
+  findAppById(
+    appId: string,
+    bearerToken?: string
+  ): Promise<UserManagementAppInfo | undefined>;
 
   /**
    * Creates one application account.
@@ -93,6 +126,42 @@ export class DefaultUserManagementAdapter implements UserManagementAdapter {
   }
 
   /**
+   * Finds one application account by id using the paginated app list API.
+   *
+   * @param appId Application account id.
+   * @param bearerToken Optional user bearer token.
+   * @returns The matched application account projection, or `undefined`.
+   */
+  public async findAppById(
+    appId: string,
+    bearerToken?: string
+  ): Promise<UserManagementAppInfo | undefined> {
+    let offset = 0;
+
+    while (true) {
+      const result = await this.listApps(
+        { limit: USER_MANAGEMENT_APP_PAGE_LIMIT, offset },
+        bearerToken
+      );
+      const parsed = parseUserManagementAppList(result.body);
+      const matched = parsed.entries.find((entry) => entry.id === appId);
+
+      if (matched !== undefined) {
+        return matched;
+      }
+
+      offset += parsed.entries.length;
+      if (
+        parsed.entries.length === 0 ||
+        parsed.totalCount === undefined ||
+        offset >= parsed.totalCount
+      ) {
+        return undefined;
+      }
+    }
+  }
+
+  /**
    * Creates one application account.
    *
    * @param body Request body.
@@ -144,4 +213,35 @@ export class DefaultUserManagementAdapter implements UserManagementAdapter {
       timeoutMs: env.openClawGatewayTimeoutMs
     });
   }
+}
+
+/**
+ * Parses the user-management application account list response.
+ *
+ * @param body Raw upstream JSON response body.
+ * @returns Valid application accounts and total count when available.
+ */
+function parseUserManagementAppList(
+  body: string
+): { entries: UserManagementAppInfo[]; totalCount?: number } {
+  const parsed = JSON.parse(body) as UserManagementAppListBody;
+  const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
+
+  return {
+    entries: entries
+      .map((entry): UserManagementAppInfo | undefined => {
+        if (typeof entry !== "object" || entry === null) {
+          return undefined;
+        }
+        const app = entry as Record<string, unknown>;
+        if (typeof app.id !== "string" || typeof app.name !== "string") {
+          return undefined;
+        }
+
+        return { id: app.id, name: app.name };
+      })
+      .filter((entry): entry is UserManagementAppInfo => entry !== undefined),
+    totalCount:
+      typeof parsed.total_count === "number" ? parsed.total_count : undefined
+  };
 }

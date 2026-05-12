@@ -64,7 +64,7 @@ type LogicMocks = Partial<{
   listDigitalHumans: () => Promise<unknown>;
   getDigitalHuman: (id: string, bearerToken?: string) => Promise<unknown>;
   createDigitalHuman: (body: unknown) => Promise<unknown>;
-  updateDigitalHuman: (id: string, patch: unknown) => Promise<unknown>;
+  updateDigitalHuman: (id: string, patch: unknown, bearerToken?: string) => Promise<unknown>;
   deleteDigitalHuman: (id: string, deleteFiles?: boolean) => Promise<void>;
 }>;
 
@@ -783,6 +783,7 @@ describe("createDigitalHumanRouter", () => {
           skills: ["sk"],
           bkn: [{ name: "bn", id: "bkn-id-1", color: "#1677ff" }],
           kweaver_token: " kw-token ",
+          app_id: " app-1 ",
           channel: { type: "dingtalk", appId: "i", appSecret: "sec" }
         }
       } as Request,
@@ -799,6 +800,7 @@ describe("createDigitalHumanRouter", () => {
         skills: ["sk"],
         bkn: [{ name: "bn", id: "bkn-id-1", color: "#1677ff" }],
         kweaver_token: "kw-token",
+        app_id: "app-1",
         channel: { type: "dingtalk", appId: "i", appSecret: "sec" }
       })
     );
@@ -823,6 +825,7 @@ describe("createDigitalHumanRouter", () => {
           skills: [" a ", "", 1],
           bkn: [],
           kweaver_token: "   ",
+          app_id: "   ",
           channel: { type: "   ", appId: "  app  ", appSecret: "  secret  " }
         }
       } as Request,
@@ -839,6 +842,7 @@ describe("createDigitalHumanRouter", () => {
       skills: ["a"],
       bkn: undefined,
       kweaver_token: undefined,
+      app_id: undefined,
       channel: { appId: "app", appSecret: "secret" }
     });
   });
@@ -868,7 +872,7 @@ describe("createDigitalHumanRouter", () => {
     expect(updateDigitalHuman).toHaveBeenCalledWith("i", {
       skills: ["a", "b"],
       bkn: [{ name: "x", id: "bkn-id-2", color: "#52c41a" }]
-    });
+    }, undefined);
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -899,10 +903,44 @@ describe("createDigitalHumanRouter", () => {
 
     expect(updateDigitalHuman).toHaveBeenNthCalledWith(1, "i", {
       kweaver_token: "token-1"
-    });
+    }, undefined);
     expect(updateDigitalHuman).toHaveBeenNthCalledWith(2, "i", {
       kweaver_token: null
+    }, undefined);
+  });
+
+  it("PUT forwards application account id replacement and deletion patches", async () => {
+    const updateDigitalHuman = vi.fn().mockResolvedValue({ id: "i", name: "n", soul: "" });
+    const { createDigitalHumanRouter } = await importRouterWithLogicMock({
+      updateDigitalHuman
     });
+    const router = createDigitalHumanRouter() as Router;
+    const handler = findHandler(router, "put", detailPath);
+
+    await handler?.(
+      {
+        params: { id: "i" },
+        body: { app_id: "  app-1  " },
+        headers: { authorization: "Bearer token-1" }
+      } as unknown as Request,
+      createResponseDouble(),
+      vi.fn<NextFunction>()
+    );
+    await handler?.(
+      {
+        params: { id: "i" },
+        body: { app_id: null }
+      } as unknown as Request,
+      createResponseDouble(),
+      vi.fn<NextFunction>()
+    );
+
+    expect(updateDigitalHuman).toHaveBeenNthCalledWith(1, "i", {
+      app_id: "app-1"
+    }, "token-1");
+    expect(updateDigitalHuman).toHaveBeenNthCalledWith(2, "i", {
+      app_id: null
+    }, undefined);
   });
 
   it("rejects KWeaver tokens with invalid type, line breaks, or excessive length", async () => {
@@ -968,7 +1006,7 @@ describe("createDigitalHumanRouter", () => {
       skills: ["a"],
       bkn: [],
       channel: { appId: "app", appSecret: "secret" }
-    });
+    }, undefined);
   });
 
   it("wraps unexpected detail, update, and delete errors", async () => {
