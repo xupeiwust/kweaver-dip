@@ -76,16 +76,6 @@ spec:
                 configMapKeyRef:
                   name: {{ .Chart.Name }}-config
                   key: OPENCLAW_HOST_PATH
-            - name: MCP_HOST
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Chart.Name }}-config
-                  key: MCP_HOST
-            - name: MCP_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Chart.Name }}-config
-                  key: MCP_PORT
             - name: DB_HOST
               valueFrom:
                 configMapKeyRef:

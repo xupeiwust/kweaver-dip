@@ -14,6 +14,11 @@ import { getStudioDatabaseConfig } from "../utils/env";
 import { registerStudioMcpTools } from "./tools";
 
 /**
+ * HTTP paths served by the Studio MCP app.
+ */
+const STUDIO_MCP_PATHS = ["/mcp", "/studio/mcp"];
+
+/**
  * Factory used to create a fresh MCP server for each stateless HTTP request.
  */
 export type StudioMcpServerFactory = () => McpServer;
@@ -60,7 +65,7 @@ export function createStudioMcpApp(
 ) {
   const app = createMcpExpressApp(options);
 
-  app.post("/mcp", async (request: Request, response: Response) => {
+  app.post(STUDIO_MCP_PATHS, async (request: Request, response: Response) => {
     const server = createServer();
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined
@@ -88,7 +93,7 @@ export function createStudioMcpApp(
     }
   });
 
-  app.get("/mcp", (_request: Request, response: Response) => {
+  app.get(STUDIO_MCP_PATHS, (_request: Request, response: Response) => {
     response.status(405).json({
       jsonrpc: "2.0",
       error: {
@@ -99,7 +104,7 @@ export function createStudioMcpApp(
     });
   });
 
-  app.delete("/mcp", (_request: Request, response: Response) => {
+  app.delete(STUDIO_MCP_PATHS, (_request: Request, response: Response) => {
     response.status(405).json({
       jsonrpc: "2.0",
       error: {

@@ -166,23 +166,6 @@ export function getEnv(): {
 }
 
 /**
- * Reads and validates Studio MCP Server runtime settings.
- *
- * @returns The normalized MCP host and port.
- */
-export function getMcpEnv(): {
-  host: string;
-  port: number;
-} {
-  loadEnvFile();
-
-  return {
-    host: readOptionalString(process.env.MCP_HOST) ?? "127.0.0.1",
-    port: resolvePositiveInteger(process.env.MCP_PORT, 3001, "MCP_PORT")
-  };
-}
-
-/**
  * Reads and validates Studio MariaDB connection settings.
  *
  * @returns The normalized Studio database configuration.

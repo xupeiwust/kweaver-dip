@@ -8,7 +8,6 @@ import {
   asMessage,
   getEnv,
   getOpenClawGatewayRuntimeConfig,
-  getMcpEnv,
   getStudioDatabaseConfig,
   isDevelopmentMode,
   loadEnvFile,
@@ -157,55 +156,6 @@ describe("env helpers", () => {
         process.env.DIP_STUDIO_CWD_ENV_TEST = previousValue;
       }
       rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
-
-  it("loads MCP settings from the service environment", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "dip-studio-mcp-env-"));
-    const envPath = join(tempDir, ".env");
-
-    writeFileSync(envPath, ["MCP_HOST=0.0.0.0", "MCP_PORT=39001"].join("\n"), "utf8");
-
-    try {
-      loadEnvFile({
-        path: envPath,
-        override: true,
-        forceReload: true
-      });
-
-      expect(getMcpEnv()).toEqual({
-        host: "0.0.0.0",
-        port: 39001
-      });
-    } finally {
-      rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
-
-  it("uses local MCP defaults", () => {
-    const previousHost = process.env.MCP_HOST;
-    const previousPort = process.env.MCP_PORT;
-
-    try {
-      delete process.env.MCP_HOST;
-      delete process.env.MCP_PORT;
-
-      expect(getMcpEnv()).toEqual({
-        host: "127.0.0.1",
-        port: 3001
-      });
-    } finally {
-      if (previousHost === undefined) {
-        delete process.env.MCP_HOST;
-      } else {
-        process.env.MCP_HOST = previousHost;
-      }
-
-      if (previousPort === undefined) {
-        delete process.env.MCP_PORT;
-      } else {
-        process.env.MCP_PORT = previousPort;
-      }
     }
   });
 

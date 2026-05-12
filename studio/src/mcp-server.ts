@@ -1,7 +1,16 @@
 import type { Express } from "express";
 
 import { loadStudioRuntimeConfigFromDatabase } from "./logic/studio-runtime-config";
-import { getMcpEnv } from "./utils/env";
+
+/**
+ * Fixed host used by the Studio MCP Server.
+ */
+const STUDIO_MCP_HOST = "127.0.0.1";
+
+/**
+ * Fixed port used by the Studio MCP Server.
+ */
+const STUDIO_MCP_PORT = 3001;
 
 /**
  * Starts the Studio MCP Server.
@@ -24,7 +33,6 @@ export function startMcpServer(app: Express, port: number, host: string) {
  */
 export async function bootstrapMcpServer() {
   await loadStudioRuntimeConfigFromDatabase();
-  const env = getMcpEnv();
   const {
     createDefaultStudioMcpLogic,
     createStudioMcpApp,
@@ -32,10 +40,10 @@ export async function bootstrapMcpServer() {
   } = await import("./mcp/app.js");
   const logic = createDefaultStudioMcpLogic();
   const app = createStudioMcpApp(() => createStudioMcpServer(logic), {
-    host: env.host
+    host: STUDIO_MCP_HOST
   });
 
-  return startMcpServer(app, env.port, env.host);
+  return startMcpServer(app, STUDIO_MCP_PORT, STUDIO_MCP_HOST);
 }
 
 void bootstrapMcpServer();

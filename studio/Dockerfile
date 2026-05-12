@@ -44,6 +44,6 @@ RUN ln -sf /app/node_modules/openclaw/openclaw.mjs /usr/local/bin/openclaw \
     && ln -sf /app/node_modules/mcporter/dist/cli.js /usr/local/bin/mcporter \
     && chmod +x /app/scripts/docker-entrypoint.sh /app/scripts/openclaw-init.sh
 
-EXPOSE 3000
+EXPOSE 3000 3001
 
 CMD ["/app/scripts/docker-entrypoint.sh"]

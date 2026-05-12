@@ -60,8 +60,6 @@ studio:
   OpenClawHostPath: /root/.openclaw/
   KWeaverHydraAdminURL: http://hydra-admin:4445
   useExternalOpenClaw: false
-  mcpHost: 0.0.0.0
-  mcpPort: 3001
 
 resources:
   init:

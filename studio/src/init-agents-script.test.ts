@@ -122,4 +122,55 @@ describe("scripts/init_agents/index.mjs", () => {
 
     expect(cfg.agents?.defaults?.maxConcurrent).toBe(3);
   });
+
+  it("registers Studio MCP in home and workspace mcporter configs", async () => {
+    rootDir = await mkdtemp(join(tmpdir(), "dip-init-agents-script-mcporter-"));
+    const homeDir = join(rootDir, "home");
+    const builtInDir = join(rootDir, "built-in");
+    const studioMcpBaseUrl = "http://127.0.0.1:3001/studio/mcp";
+    await mkdir(join(homeDir, ".openclaw", "agents", "main", "agent"), {
+      recursive: true
+    });
+    await seedBuiltInAgent(builtInDir);
+    await writeFile(
+      join(homeDir, ".openclaw", "openclaw.json"),
+      JSON.stringify({ agents: { list: [] } }),
+      "utf8"
+    );
+    await writeFile(
+      join(homeDir, ".openclaw", "agents", "main", "agent", "auth-profiles.json"),
+      JSON.stringify({}),
+      "utf8"
+    );
+
+    await runInitAgentsScript(homeDir, builtInDir);
+
+    const homeMcporterConfig = JSON.parse(
+      await readFile(join(homeDir, ".mcporter", "mcporter.json"), "utf8")
+    ) as {
+      mcpServers?: { "dip-studio"?: { baseUrl?: string } };
+    };
+    const workspaceMcporterConfig = JSON.parse(
+      await readFile(
+        join(
+          homeDir,
+          ".openclaw",
+          "workspace",
+          "__internal_skill_agent__",
+          "config",
+          "mcporter.json"
+        ),
+        "utf8"
+      )
+    ) as {
+      mcpServers?: { "dip-studio"?: { baseUrl?: string } };
+    };
+
+    expect(homeMcporterConfig.mcpServers?.["dip-studio"]?.baseUrl).toBe(
+      studioMcpBaseUrl
+    );
+    expect(workspaceMcporterConfig.mcpServers?.["dip-studio"]?.baseUrl).toBe(
+      studioMcpBaseUrl
+    );
+  });
 });

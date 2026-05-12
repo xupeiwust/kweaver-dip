@@ -10,6 +10,18 @@ OpenClaw 通过 `mcporter` 技能来访问 DIP Studio MCP Server 暴露的工具
 
 业务知识网络。一种包含对象、逻辑、行动的知识图谱。
 
+## MCP 和 kweaver-core 的部署关系
+
+Studio MCP 服务和 `kweaver-core` 技能有两种部署关系：“容器模式”和“容器-主机”模式
+
+### 容器模式
+
+Studio MCP 服务和 OpenClaw 都运行在 K8s 同一个容器中，`kweaver-core` 技能直接通过 `http://127.0.0.1:3001/mcp` 访问 MCP 服务。
+
+### 容器-主机模式
+
+Studio MCP 服务运行在 K8s Pod 中，通过 Ingress 暴露 `https://\<Pod IP\>/studio/mcp` 的 HTTP 访问端点。`kweaver-core` 技能随 OpenClaw 部署在宿主机，通过端点访问 MCP 服务。
+
 ## MCP Server 设计
 
 ### tools
