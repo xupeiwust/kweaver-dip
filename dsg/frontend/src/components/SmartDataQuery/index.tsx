@@ -1,16 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Input, Button, message, Dropdown, Tooltip } from 'antd'
+import { Input, Button, message, Dropdown } from 'antd'
 import {
     ArrowRightOutlined,
     ProductOutlined,
-    CloseOutlined,
     CloseCircleFilled,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import {
     getAssistantList,
+    getPublishedAgentList,
     getSearchAgentInfo,
-    getAgentVersionV0,
 } from '@/core/apis/afSailorService'
 import { formatError, getMenuResourceActions } from '@/core'
 import { Loader } from '@/ui'
@@ -20,26 +19,14 @@ import AgentAvatar from '../Assistant/AgentAvatar'
 import { useMicroAppProps } from '@/context'
 import { FontIcon } from '@/icons'
 import { IconType } from '@/icons/const'
-
-interface IAgentInfo {
-    adp_agent_key: string
-    adp_business_domain_id: string
-}
-
-interface ISceneAgent {
-    id: string
-    key: string
-    name: string
-    business_domain_id?: string
-    avatar?: string
-}
-
-interface ISceneMoreDropdownProps {
-    agents: ISceneAgent[]
-    selectedKey?: string
-    onSelect: (agent: ISceneAgent) => void
-    onViewMore: () => void
-}
+import type {
+    IAgentInfo,
+    ICurrentAgent,
+    IPresetQuestion,
+    ISceneAgent,
+    ISceneMoreDropdownProps,
+    ISceneTagsRowProps,
+} from './types'
 
 const SceneMoreDropdown: React.FC<ISceneMoreDropdownProps> = ({
     agents,
@@ -117,16 +104,6 @@ const createSceneMoreDropdownRender =
                 onViewMore={onViewMore}
             />
         )
-
-interface ISceneTagsRowProps {
-    visibleSceneAgents: ISceneAgent[]
-    overflowSceneAgents: ISceneAgent[]
-    selectedSceneAgentKey?: string
-    onSceneTagClick: (agent: ISceneAgent) => void
-    onViewMore: () => void
-    moreOpen: boolean
-    setMoreOpen: (open: boolean) => void
-}
 
 const SceneTagsRow: React.FC<ISceneTagsRowProps> = ({
     visibleSceneAgents,
@@ -216,9 +193,9 @@ const SmartDataQuery: React.FC = () => {
     const [selectedSceneAgent, setSelectedSceneAgent] =
         useState<ISceneAgent | null>(null)
     const [moreOpen, setMoreOpen] = useState(false)
-    const [presetQuestions, setPresetQuestions] = useState<
-        Array<{ question: string }>
-    >([])
+    const [presetQuestions, setPresetQuestions] = useState<IPresetQuestion[]>(
+        [],
+    )
     const { microAppProps } = useMicroAppProps()
     const [profile, setProfile] = useState<string>('')
     const [menuActions, setMenuActions] = useState<string[]>([]) // 菜单资源动作权限
@@ -252,7 +229,30 @@ const SmartDataQuery: React.FC = () => {
             try {
                 const res = await getSearchAgentInfo()
                 if (res?.res?.adp_agent_key) {
-                    setAgentInfo(res.res)
+                    const publishedAgentRes = await getPublishedAgentList({
+                        ids: [res.res.adp_agent_key],
+                        size: 1,
+                        is_to_square: 1,
+                        business_domain_id:
+                            res?.res?.adp_business_domain_id || 'bd_public',
+                    })
+                    const publishedAgentInfo = publishedAgentRes?.entries?.[0]
+                    if (
+                        !publishedAgentInfo?.id ||
+                        !publishedAgentInfo?.version
+                    ) {
+                        setAgentInfo(null)
+                        setAgentError(
+                            __('无法获取默认助手，暂时无法进行智能问数'),
+                        )
+                        return
+                    }
+                    setAgentInfo({
+                        id: publishedAgentInfo.id,
+                        version: publishedAgentInfo.version,
+                        adp_agent_key: res.res.adp_agent_key,
+                        adp_business_domain_id: res.res.adp_business_domain_id,
+                    })
                     setAgentError(null)
                 } else {
                     setAgentError(__('无法获取默认助手，暂时无法进行智能问数'))
@@ -283,9 +283,11 @@ const SmartDataQuery: React.FC = () => {
         fetchSceneAgents()
     }, [])
 
-    const currentAgent = useMemo(() => {
+    const currentAgent = useMemo<ICurrentAgent | null>(() => {
         if (selectedSceneAgent) {
             return {
+                id: selectedSceneAgent.id,
+                version: selectedSceneAgent.version,
                 name: selectedSceneAgent.name,
                 key: selectedSceneAgent.key,
                 business_domain_id: selectedSceneAgent.business_domain_id || '',
@@ -294,6 +296,8 @@ const SmartDataQuery: React.FC = () => {
 
         if (agentInfo) {
             return {
+                id: agentInfo.id,
+                version: agentInfo.version,
                 name: __('智能问数'),
                 key: agentInfo.adp_agent_key,
                 business_domain_id: agentInfo.adp_business_domain_id,
@@ -318,22 +322,25 @@ const SmartDataQuery: React.FC = () => {
                 )
                 return
             }
+            const questionKey = `smart-data-query:${Date.now()}:${
+                currentAgent.id
+            }`
 
-            const params = new URLSearchParams({
-                agentName: currentAgent.name,
-                agentKey: currentAgent.key,
-                businessDomain: currentAgent.business_domain_id || '',
-            })
+            try {
+                sessionStorage.setItem(questionKey, value)
+                // eslint-disable-next-line no-empty
+            } catch (error) {}
 
-            const newUrl = `/chatkit/${currentAgent.key}?${params.toString()}`
-
-            navigate(newUrl, {
-                state: {
-                    question: value,
-                },
-            })
+            const url = `/business-network/agent-square/usage?id=${
+                currentAgent.id || ''
+            }&version=${
+                currentAgent.version || ''
+            }&agentAppType=common&preRouteIsMicroApp=true&preRoute=${encodeURIComponent(
+                window.location.pathname,
+            )}&hidesidebar=true&questionKey=${encodeURIComponent(questionKey)}`
+            microAppProps?.props?.navigate(url)
         },
-        [question, currentAgent, agentError, navigate],
+        [question, currentAgent, agentError, microAppProps],
     )
 
     const handlePressEnter = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -344,7 +351,7 @@ const SmartDataQuery: React.FC = () => {
     }
 
     const handleSceneTagClick = useCallback(
-        async (agent: ISceneAgent) => {
+        (agent: ISceneAgent) => {
             if (selectedSceneAgent && selectedSceneAgent.key === agent.key) {
                 setSelectedSceneAgent(null)
                 setPresetQuestions([])
@@ -352,21 +359,16 @@ const SmartDataQuery: React.FC = () => {
             }
             setSelectedSceneAgent(agent)
             setPresetQuestions([])
-            try {
-                const res = await getAgentVersionV0(
-                    agent.key,
-                    agent.business_domain_id || '',
-                )
-                const list = res?.config?.preset_questions ?? []
-                setPresetQuestions(Array.isArray(list) ? list : [])
-                setProfile(res?.profile ?? '')
-            } catch (error) {
-                // eslint-disable-next-line no-console
-                console.error('获取 preset_questions 失败:', error)
-                setPresetQuestions([])
-            }
+            const url = `/business-network/agent-square/usage?id=${
+                agent.id
+            }&version=${
+                agent.version || ''
+            }&agentAppType=common&preRouteIsMicroApp=true&preRoute=${encodeURIComponent(
+                window.location.pathname,
+            )}&hidesidebar=true`
+            microAppProps?.props?.navigate(url)
         },
-        [selectedSceneAgent],
+        [microAppProps, selectedSceneAgent],
     )
 
     const handleRemoveSelectedAgent = useCallback(() => {

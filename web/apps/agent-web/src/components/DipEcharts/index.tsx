@@ -2,23 +2,23 @@ import React, { CSSProperties, forwardRef, useEffect, useImperativeHandle, useRe
 import * as echarts from 'echarts';
 import type { EChartsOption, ECharts } from 'echarts';
 import classNames from 'classnames';
-import { useDeepCompareEffect, useLatestState } from '@/hooks';
+import { useDeepCompareEffect } from '@/hooks';
 import ResizeObserver from '@/components/ResizeObserver';
 
 export type DipEchartsProps = {
   className?: string;
   style?: CSSProperties;
   options: EChartsOption;
+  notMerge?: boolean;
 };
 
 export type DipEchartsRef = {
   getEchartsInstance: () => ECharts;
 };
 const DipEcharts = forwardRef<DipEchartsRef, DipEchartsProps>((props, ref) => {
-  const { className, style, options } = props;
+  const { className, style, options, notMerge = false } = props;
   const chartsInstance = useRef<ECharts>();
   const chartsWrapper = useRef<HTMLDivElement | null>(null);
-  const [rendered, setRendered, getRendered] = useLatestState(false);
 
   useImperativeHandle(ref, () => ({
     getEchartsInstance,
@@ -28,28 +28,27 @@ const DipEcharts = forwardRef<DipEchartsRef, DipEchartsProps>((props, ref) => {
 
   useEffect(() => {
     chartsInstance.current = echarts.init(chartsWrapper.current);
-    chartsInstance.current.on('finished', handleFinished);
     return () => {
       chartsInstance.current?.dispose();
-      chartsInstance.current?.off('finished', handleFinished);
     };
   }, []);
 
   useDeepCompareEffect(() => {
-    chartsInstance.current?.setOption(options);
-  }, [options]);
-
-  const handleFinished = () => {
-    if (!getRendered()) {
-      setRendered(true);
+    if (!chartsInstance.current) {
+      return;
     }
-  };
+    chartsInstance.current.resize();
+    chartsInstance.current.setOption(options, { notMerge });
+    requestAnimationFrame(() => {
+      chartsInstance.current?.resize();
+    });
+  }, [notMerge, options]);
 
   return (
     <ResizeObserver
-      onResize={() => {
-        if (getRendered()) {
-          chartsInstance.current?.resize();
+      onResize={({ width, height, visible }) => {
+        if (visible && width > 0 && height > 0) {
+          chartsInstance.current?.resize({ width, height });
         }
       }}
     >

@@ -15,6 +15,7 @@ import {
     pullOffAssistant,
     getMenuResourceActions,
 } from '@/core'
+import { useMicroAppProps } from '@/context'
 import { FontIcon } from '@/icons'
 import { IconType } from '@/icons/const'
 import { Empty, Loader } from '@/ui'
@@ -23,6 +24,7 @@ import { listedSearchParams } from './helper'
 import Category from './Category'
 
 const Assistant: React.FC = () => {
+    const { microAppProps } = useMicroAppProps()
     // 搜索参数
     const searchParamsRef = useRef<IGetAssistantListParams>(listedSearchParams)
     // 搜索关键词（用于 UI 显示）
@@ -101,15 +103,15 @@ const Assistant: React.FC = () => {
 
     // 点击卡片
     const handleCardClick = (item: IAgentItem) => {
-        // 跳转到聊天页面，agentId 作为路径参数，agentName 和 businessDomain 作为查询参数
-        const params = new URLSearchParams({
-            agentName: item.name,
-            agentKey: item.key,
-            businessDomain: item.business_domain_id || '',
-        })
-
-        const newUrl = `/chatkit/${item.key}?${params.toString()}`
-        navigate(newUrl)
+        // 跳转到决策智能体页面
+        const newUrl = `/business-network/agent-square/usage?id=${
+            item.id
+        }&version=${
+            (item as any).version
+        }&agentAppType=common&preRouteIsMicroApp=true&preRoute=${encodeURIComponent(
+            window.location.pathname,
+        )}&hidesidebar=true`
+        microAppProps?.props?.navigate(newUrl)
     }
 
     // 添加助手成功后刷新列表

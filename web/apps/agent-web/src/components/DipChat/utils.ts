@@ -2,6 +2,7 @@ import _ from 'lodash';
 import { nanoid } from 'nanoid';
 import type {
   ConversationItemType,
+  DipChatChartResultType,
   DipChatItemContentProgressType,
   DipChatItemContentType,
 } from '@/components/DipChat/interface';
@@ -29,30 +30,54 @@ export const getCitesData = (other_variables: any) => {
   }
 };
 
-const chartConfig2Echarts = (chartResult: any) => {
+export const chartConfig2Echarts = (chartResult: any) => {
   const { chart_config, data } = chartResult || {};
   let options: EChartsOption = {};
   const chartType = _.get(chart_config, 'chart_type', '');
+  const normalizedData = Array.isArray(data) ? data : [];
   // 折现图
   if (chartType === 'Line') {
     const {
-      chart_config: { xField, yField, seriesField },
+      chart_config: { xField: rawXField, yField: rawYField, seriesField, colorField, angleField },
     } = chartResult;
-    const seriesValues = Array.from(new Set(data.map((item: any) => item[seriesField])));
-    const xValues: string[] = Array.from(new Set(data.map((item: any) => item[xField])));
-    const series: any = seriesValues.map(seriesValue => {
-      return {
-        name: seriesValue,
-        type: 'line',
-        data: xValues.map(xValue => {
-          const item = data.find((d: any) => d[xField] === xValue && d[seriesField] === seriesValue);
-          return item ? item[yField] : null; // 如果没有数据则返回 null
-        }),
-      };
-    });
+    const xField = rawXField || colorField;
+    const yField = rawYField || angleField;
+    if (!xField || !yField) {
+      return options;
+    }
+    const xValues: string[] = Array.from(
+      new Set(normalizedData.map((item: any) => item[xField]).filter(value => value !== undefined && value !== null))
+    );
+    const series: any = seriesField
+      ? Array.from(
+          new Set(
+            normalizedData.map((item: any) => item[seriesField]).filter(value => value !== undefined && value !== null)
+          )
+        ).map(seriesValue => {
+          return {
+            name: seriesValue,
+            type: 'line',
+            data: xValues.map(xValue => {
+              const item = normalizedData.find((d: any) => d[xField] === xValue && d[seriesField] === seriesValue);
+              return item ? item[yField] : null; // 如果没有数据则返回 null
+            }),
+          };
+        })
+      : [
+          {
+            name: yField,
+            type: 'line',
+            data: xValues.map(xValue => {
+              const item = normalizedData.find((d: any) => d[xField] === xValue);
+              return item ? item[yField] : null;
+            }),
+          },
+        ];
 
     options = {
-      legend: {},
+      legend: {
+        show: series.length > 1,
+      },
       grid: {
         containLabel: true,
         top: '10%',
@@ -91,10 +116,12 @@ const chartConfig2Echarts = (chartResult: any) => {
   // 饼图
   if (chartType === 'Pie') {
     const {
-      chart_config: { colorField, angleField },
+      chart_config: { colorField: rawColorField, angleField: rawAngleField, xField, yField },
     } = chartResult;
+    const colorField = rawColorField || xField;
+    const angleField = rawAngleField || yField;
     const pieData: any = [];
-    data.forEach((item: any) => {
+    normalizedData.forEach((item: any) => {
       pieData.push({
         name: item[colorField],
         value: Number(item[angleField]),
@@ -134,10 +161,12 @@ const chartConfig2Echarts = (chartResult: any) => {
   // 圆环
   if (chartType === 'Circle') {
     const {
-      chart_config: { colorField, angleField },
+      chart_config: { colorField: rawColorField, angleField: rawAngleField, xField, yField },
     } = chartResult;
+    const colorField = rawColorField || xField;
+    const angleField = rawAngleField || yField;
     const pieData: any = [];
-    data.forEach((item: any) => {
+    normalizedData.forEach((item: any) => {
       pieData.push({
         name: item[colorField],
         value: Number(item[angleField]),
@@ -161,7 +190,7 @@ const chartConfig2Echarts = (chartResult: any) => {
           name: angleField,
           data: pieData,
           type: 'pie',
-          radius: '55%',
+          radius: ['40%', '55%'],
           center: ['40%', '50%'],
           emphasis: {
             itemStyle: {
@@ -177,22 +206,46 @@ const chartConfig2Echarts = (chartResult: any) => {
   // 柱状图
   if (chartType === 'Column') {
     const {
-      chart_config: { xField, yField, seriesField },
+      chart_config: { xField: rawXField, yField: rawYField, seriesField, colorField, angleField },
     } = chartResult;
-    const seriesValues = Array.from(new Set(data.map((item: any) => item[seriesField])));
-    const xValues: string[] = Array.from(new Set(data.map((item: any) => item[xField])));
-    const series: any = seriesValues.map(seriesValue => {
-      return {
-        name: seriesValue,
-        type: 'bar',
-        data: xValues.map(xValue => {
-          const item = data.find((d: any) => d[xField] === xValue && d[seriesField] === seriesValue);
-          return item ? item[yField] : null; // 如果没有数据则返回 null
-        }),
-      };
-    });
+    const xField = rawXField || colorField;
+    const yField = rawYField || angleField;
+    if (!xField || !yField) {
+      return options;
+    }
+    const xValues: string[] = Array.from(
+      new Set(normalizedData.map((item: any) => item[xField]).filter(value => value !== undefined && value !== null))
+    );
+    const series: any = seriesField
+      ? Array.from(
+          new Set(
+            normalizedData.map((item: any) => item[seriesField]).filter(value => value !== undefined && value !== null)
+          )
+        ).map(seriesValue => {
+          return {
+            name: seriesValue,
+            type: 'bar',
+            data: xValues.map(xValue => {
+              const item = normalizedData.find((d: any) => d[xField] === xValue && d[seriesField] === seriesValue);
+              return item ? item[yField] : null; // 如果没有数据则返回 null
+            }),
+          };
+        })
+      : [
+          {
+            name: yField,
+            type: 'bar',
+            data: xValues.map(xValue => {
+              const item = normalizedData.find((d: any) => d[xField] === xValue);
+              return item ? item[yField] : null;
+            }),
+          },
+        ];
 
     options = {
+      legend: {
+        show: series.length > 1,
+      },
       grid: {
         containLabel: true,
         top: '15%',
@@ -233,6 +286,20 @@ const chartConfig2Echarts = (chartResult: any) => {
   return options;
 };
 
+export const buildChartToolEchartsOptions = (chartResult: any, chartType?: string) => {
+  if (_.isEmpty(chartResult)) {
+    return {};
+  }
+
+  if (!chartType) {
+    return chartConfig2Echarts(chartResult);
+  }
+
+  const nextChartResult = _.cloneDeep(chartResult);
+  _.set(nextChartResult, ['chart_config', 'chart_type'], chartType);
+  return chartConfig2Echarts(nextChartResult);
+};
+
 const getTableColumnByTableData = (tableData: any) => {
   if (tableData.length === 0) {
     return [];
@@ -256,6 +323,187 @@ const getTableColumnByTableData = (tableData: any) => {
     render: (_text: any, _record: any, index: number) => index + 1,
   });
   return columns;
+};
+
+const getChartTableColumnsByTableData = (tableData: any[] = [], chartConfig: Record<string, any> = {}) => {
+  const baseColumns = getTableColumnByTableData(tableData);
+  if (!baseColumns.length) {
+    return baseColumns;
+  }
+
+  const preferredFieldOrder = _.uniq(
+    [
+      chartConfig.xField || chartConfig.colorField,
+      chartConfig.seriesField,
+      chartConfig.yField || chartConfig.angleField,
+    ]
+      .filter(Boolean)
+      .map(field => String(field))
+  );
+
+  if (!preferredFieldOrder.length) {
+    return baseColumns;
+  }
+
+  const indexColumn = baseColumns.find((column: any) => column?.dataIndex === 'index');
+  const dataColumns = baseColumns.filter((column: any) => column?.dataIndex !== 'index');
+  const fieldToColumnMap = new Map(dataColumns.map((column: any) => [String(column.dataIndex), column]));
+
+  const orderedColumns = preferredFieldOrder
+    .map(field => fieldToColumnMap.get(field))
+    .filter(Boolean) as TableColumnsType;
+
+  const orderedFieldSet = new Set(preferredFieldOrder);
+  const remainingColumns = dataColumns.filter((column: any) => !orderedFieldSet.has(String(column.dataIndex)));
+
+  return [indexColumn, ...orderedColumns, ...remainingColumns].filter(Boolean) as TableColumnsType;
+};
+
+const buildChartResult = (
+  chartConfig: Record<string, any> = {},
+  tableData: any[] = [],
+  title?: string
+): DipChatChartResultType | undefined => {
+  if (_.isEmpty(chartConfig) || !Array.isArray(tableData) || tableData.length === 0) {
+    return undefined;
+  }
+
+  const rawChartResult = {
+    chart_config: chartConfig,
+    data: tableData,
+    title,
+  };
+  const echartsOptions = chartConfig2Echarts(rawChartResult);
+  if (_.isEmpty(echartsOptions)) {
+    return undefined;
+  }
+
+  return {
+    echartsOptions,
+    tableColumns: getChartTableColumnsByTableData(tableData, chartConfig),
+    tableData,
+    rawChartResult,
+  };
+};
+
+const getCodeBlockContents = (text: string) => {
+  const matches = [...text.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)];
+  return matches.map(match => match[1]?.trim()).filter(Boolean) as string[];
+};
+
+const removeResultCacheComments = (text: string) => text.replace(/<!--\s*result_cache_key:[\s\S]*?-->/g, '').trim();
+
+const normalizeFinalAnswerPayload = (payload: any) => {
+  if (!_.isPlainObject(payload)) {
+    return undefined;
+  }
+
+  const rawTitle = _.get(payload, 'chart_title');
+
+  const chartConfig = _.get(payload, 'chart_config');
+  const chartData = _.get(payload, 'chart_data');
+  const fallbackData = _.get(payload, 'data');
+  const tableData = Array.isArray(chartData) ? chartData : Array.isArray(fallbackData) ? fallbackData : [];
+
+  return {
+    text: typeof payload.text === 'string' ? payload.text : '',
+    title: typeof rawTitle === 'string' ? rawTitle : '',
+    chartConfig,
+    tableData,
+  };
+};
+
+const parseFinalAnswerPayloadFromText = (text?: string) => {
+  if (!text || typeof text !== 'string') {
+    return undefined;
+  }
+
+  const normalizedText = removeResultCacheComments(text.trim());
+  if (!normalizedText) {
+    return undefined;
+  }
+
+  if (isJSONString(normalizedText)) {
+    const normalizedPayload = normalizeFinalAnswerPayload(JSON.parse(normalizedText));
+    if (normalizedPayload) {
+      return normalizedPayload;
+    }
+  }
+
+  const codeBlockPayload = getCodeBlockContents(normalizedText)
+    .map(block => {
+      const normalizedBlock = removeResultCacheComments(block);
+      if (!isJSONString(normalizedBlock)) {
+        return undefined;
+      }
+      return normalizeFinalAnswerPayload(JSON.parse(normalizedBlock));
+    })
+    .find(Boolean);
+  if (codeBlockPayload) {
+    return codeBlockPayload;
+  }
+
+  const chartConfigIndex = normalizedText.indexOf('"chart_config"');
+  if (chartConfigIndex > -1) {
+    const startIndex = normalizedText.lastIndexOf('{', chartConfigIndex);
+    const endIndex = normalizedText.lastIndexOf('}');
+    if (startIndex > -1 && endIndex > startIndex) {
+      const candidate = normalizedText.slice(startIndex, endIndex + 1);
+      if (isJSONString(candidate)) {
+        return normalizeFinalAnswerPayload(JSON.parse(candidate));
+      }
+    }
+  }
+
+  return undefined;
+};
+
+const parseFinalAnswerChartPayloadFromPayload = (payload: any) => {
+  if (!payload || _.isEmpty(payload.chartConfig) || !Array.isArray(payload.tableData) || payload.tableData.length === 0) {
+    return undefined;
+  }
+
+  return payload;
+};
+
+const parseFinalAnswerChartPayload = (finalAnswer: any) => {
+  const answerText = _.get(finalAnswer, ['answer', 'text']);
+  const answerTypeOther = _.get(finalAnswer, 'answer_type_other');
+
+  const parsedFromText = parseFinalAnswerPayloadFromText(answerText);
+  if (parsedFromText) {
+    return parseFinalAnswerChartPayloadFromPayload(parsedFromText);
+  }
+
+  if (_.isPlainObject(answerTypeOther)) {
+    return parseFinalAnswerChartPayloadFromPayload(normalizeFinalAnswerPayload(answerTypeOther));
+  }
+
+  if (typeof answerTypeOther === 'string') {
+    return parseFinalAnswerChartPayloadFromPayload(parseFinalAnswerPayloadFromText(answerTypeOther));
+  }
+
+  return undefined;
+};
+
+const parseFinalAnswerPayload = (finalAnswer: any) => {
+  const answerText = _.get(finalAnswer, ['answer', 'text']);
+  const answerTypeOther = _.get(finalAnswer, 'answer_type_other');
+
+  const parsedFromText = parseFinalAnswerPayloadFromText(answerText);
+  if (parsedFromText) {
+    return parsedFromText;
+  }
+
+  if (_.isPlainObject(answerTypeOther)) {
+    return normalizeFinalAnswerPayload(answerTypeOther);
+  }
+
+  if (typeof answerTypeOther === 'string') {
+    return parseFinalAnswerPayloadFromText(answerTypeOther);
+  }
+
+  return undefined;
 };
 
 const ngqlData2TableData = (data: any) => {
@@ -316,7 +564,10 @@ const filterLLMAnswerExceptionText = (markdownText: string, filterEmptyCode: boo
   if (markdownText) {
     // console.log('llm-处理之前的结果');
     // console.log(markdownText);
-    const result = removeInvalidCodeBlocks(markdownText, filterEmptyCode);
+    const result = removeInvalidCodeBlocks(
+      removeResultCacheComments(markdownText),
+      filterEmptyCode
+    );
     // console.log('llm-处理之后的结果');
     // console.log(result);
     return result;
@@ -332,6 +583,40 @@ const llmTextCiteTransform = (text: string) => {
   // 然后将匹配到的文本使用i标签替换中括号进行包裹
   if (!text) return '';
   return text.replace(/\[(\d+)\]/g, (_match, p1) => `<i index="${p1}" >${p1}</i>`);
+};
+
+const getFormattedLLMText = (text: string) => {
+  if (!text) {
+    return '';
+  }
+  return llmTextCiteTransform(filterLLMAnswerExceptionText(text, true));
+};
+
+const getFinalAnswerDisplayText = (finalAnswer: any) => {
+  const parsedPayload = parseFinalAnswerPayload(finalAnswer);
+  if (parsedPayload?.text?.trim()) {
+    return parsedPayload.text;
+  }
+
+  const answerText = _.get(finalAnswer, ['answer', 'text']);
+  if (typeof answerText === 'string' && answerText.trim()) {
+    return answerText;
+  }
+
+  const answerTypeOther = _.get(finalAnswer, 'answer_type_other');
+  if (typeof answerTypeOther === 'string' && answerTypeOther.trim()) {
+    return answerTypeOther;
+  }
+
+  if (
+    _.isNil(answerTypeOther) ||
+    (Array.isArray(answerTypeOther) && answerTypeOther.length === 0) ||
+    (_.isPlainObject(answerTypeOther) && _.isEmpty(answerTypeOther))
+  ) {
+    return '';
+  }
+
+  return `\`\`\`json\n${JSON.stringify(answerTypeOther, null, 2)}\n\`\`\``;
 };
 
 /** 后端数据获取前端渲染需要的聊天项的content */
@@ -486,15 +771,10 @@ export const getChatItemContent = (message: any): DipChatItemContentType => {
               title = titleRes;
             }
             const tableData = _.get(finalResult, ['data']) || [];
-            const echartsOptions = chartConfig2Echarts(finalResult);
             res.push({
               title,
               type: 'chart_tool',
-              chartResult: {
-                echartsOptions,
-                tableColumns: getTableColumnByTableData(tableData),
-                tableData,
-              },
+              chartResult: buildChartResult(_.get(finalResult, ['chart_config'], {}), tableData, titleRes || title),
               ...commonSkillRes,
             });
             continue;
@@ -670,9 +950,24 @@ export const getChatItemContent = (message: any): DipChatItemContentType => {
       }
     }
   }
+  const finalAnswerText = getFinalAnswerDisplayText(_.get(content, 'final_answer'));
+  const finalAnswerChartPayload = parseFinalAnswerChartPayload(_.get(content, 'final_answer'));
+  const finalAnswerChartResult = finalAnswerChartPayload
+      ? buildChartResult(
+        finalAnswerChartPayload.chartConfig,
+        finalAnswerChartPayload.tableData,
+        finalAnswerChartPayload.title
+      )
+    : undefined;
   return {
     progress: res,
     cites,
+    finalAnswer: finalAnswerText || finalAnswerChartResult
+      ? {
+          text: finalAnswerText ? getFormattedLLMText(finalAnswerText) : undefined,
+          chartResult: finalAnswerChartResult,
+        }
+      : undefined,
     related_queries: _.get(ext, 'related_queries', []),
     totalTime: ext.total_time,
     totalTokens: ext.total_tokens,

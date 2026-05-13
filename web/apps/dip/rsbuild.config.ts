@@ -82,6 +82,8 @@ export default defineConfig({
       '/api/policy-management': proxyBase,
       '/api/license': proxyBase,
       '/api/thirdparty-message-plugin': proxyBase,
+      '/api/auth-service': proxyBase,
+      '/api/af-sailor-agent': proxyBase,
       // 开发环境：将 API 请求代理到远程服务器
       // 登录相关路由由中间件插件处理，不走代理
       '/api/dip-hub': {

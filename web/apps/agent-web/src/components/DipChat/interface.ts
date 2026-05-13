@@ -28,6 +28,17 @@ export type InterruptDataType = {
 
 export type DipChatItemRole = 'user' | 'common';
 
+export type DipChatChartResultType = {
+  echartsOptions: EChartsOption;
+  tableColumns: TableColumnsType;
+  tableData: any[];
+  rawChartResult?: {
+    chart_config?: Record<string, any>;
+    data?: any[];
+    title?: string;
+  };
+};
+
 export type DipChatItemContentProgressType = {
   title?: string; // 工具的标题 大模型的回答没有标题
   status: 'processing' | 'completed' | 'failed'; // 生成状态
@@ -56,11 +67,7 @@ export type DipChatItemContentProgressType = {
     tableData: any[];
   };
   // 图表工具
-  chartResult?: {
-    echartsOptions: EChartsOption;
-    tableColumns: TableColumnsType;
-    tableData: any[];
-  };
+  chartResult?: DipChatChartResultType;
   // 代码工具（沙箱工具）
   codeResult?: {
     input: string;
@@ -109,6 +116,10 @@ export type DipChatItemContentProgressType = {
 export type DipChatItemContentType = {
   cites: any[]; // 此次回答引用的数据
   progress: DipChatItemContentProgressType[];
+  finalAnswer?: {
+    text?: string;
+    chartResult?: DipChatChartResultType;
+  };
   related_queries: string[]; // 此次回答的相关问题
   totalTokens: number; // 总消耗Token
   totalTime: string; // 总耗时

@@ -62,6 +62,19 @@
     "selectConversationToPreview": "Select a conversation to preview",
     "historyConversations": "History Conversations",
     "save": "Save",
-    "rename": "Rename"
+    "rename": "Rename",
+    "switchToTable": "Switch to Table",
+    "switchToChart": "Switch to Chart",
+    "switchChartType": "Switch Chart Type",
+    "openChartPreview": "Open Chart Preview",
+    "finalAnswerChart": "Final Result Chart",
+    "tableView": "Table",
+    "chartTypeColumn": "Column Chart",
+    "chartTypeLine": "Line Chart",
+    "chartTypePie": "Pie Chart",
+    "chartTypeDonut": "Donut Chart",
+    "chartTypeOthers": "Others",
+    "runningProcess": "Running Process Analysis",
+    "consumeTime": "Duration: "
   }
-} 
+}

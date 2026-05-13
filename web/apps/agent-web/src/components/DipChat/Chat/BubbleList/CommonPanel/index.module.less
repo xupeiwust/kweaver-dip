@@ -62,3 +62,105 @@
     background: var(--dip-hover-bg-color);
   }
 }
+
+.processCollapse {
+  overflow: hidden;
+  border: none !important;
+  border-radius: 8px;
+  background: transparent !important;
+  box-shadow: none !important;
+
+  :global {
+    .@{ant-prefix}-collapse-item {
+      border-bottom: none !important;
+    }
+
+    .@{ant-prefix}-collapse-header {
+      align-items: center !important;
+      padding: 12px 14px !important;
+    }
+
+    .@{ant-prefix}-collapse-expand-icon {
+      align-self: center !important;
+      padding-inline-end: 0 !important;
+      color: rgba(0, 0, 0, 0.65);
+    }
+
+    .@{ant-prefix}-collapse-content {
+      border-top: 1px solid rgba(0, 0, 0, 0.06);
+      background: transparent !important;
+    }
+
+    .@{ant-prefix}-collapse-content-box {
+      padding: 12px 14px 0 !important;
+    }
+
+    .@{ant-prefix}-collapse-content {
+      border: none !important;
+    }
+  }
+}
+
+.processHeader {
+  padding: 9px 9px 9px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 8px;
+  color: rgba(0, 0, 0, 0.75);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.processHeaderIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 14px;
+}
+
+.processHeaderText {
+  min-width: 0;
+}
+
+.processHeaderMeta {
+  display: inline-flex;
+  margin-right: -18px;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.processHeaderTime {
+  white-space: nowrap;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.processHeaderView {
+  white-space: nowrap;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+}
+
+.processArrow {
+  margin-right: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.processContent {
+  margin-left: 8px;
+  padding-left: 17px;
+  border-left: 1px solid rgba(0, 0, 0, 0.12);
+  opacity: 0.8;
+}

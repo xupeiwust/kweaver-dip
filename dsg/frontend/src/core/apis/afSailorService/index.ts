@@ -8,6 +8,9 @@ import {
     IChatDetails,
     IGetAssistantListParams,
     IAgentList,
+    IGetPublishedAgentListParams,
+    IGetPublishedAgentListResult,
+    IGetSearchAgentInfoResult,
     IPutOnAssistantParams,
     IPutOnAssistantResult,
     IPullOffAssistantParams,
@@ -404,12 +407,7 @@ export const deleteAgentAppConversation = (
 /**
  * 获取搜索 Agent 信息
  */
-export const getSearchAgentInfo = (): Promise<{
-    res: {
-        adp_agent_key: string
-        adp_business_domain_id: string
-    }
-}> => {
+export const getSearchAgentInfo = (): Promise<IGetSearchAgentInfoResult> => {
     return get(`/api/af-sailor-agent/v1/assistant/search/info`)
 }
 
@@ -448,4 +446,15 @@ export const updateAssistantCategory = (
         `/api/af-sailor-agent/assistant/agent/update-category/${agent_id}`,
         params,
     )
+}
+
+export const getPublishedAgentList = ({
+    business_domain_id,
+    ...params
+}: IGetPublishedAgentListParams): Promise<IGetPublishedAgentListResult> => {
+    return post(`/api/agent-factory/v3/published/agent`, params, {
+        headers: {
+            'x-business-domain': business_domain_id,
+        },
+    })
 }

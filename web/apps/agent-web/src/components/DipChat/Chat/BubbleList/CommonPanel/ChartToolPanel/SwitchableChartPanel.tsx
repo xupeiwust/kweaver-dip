@@ -1,7 +1,4 @@
-import styles from './index.module.less';
-import { useDipChatStore } from '@/components/DipChat/store';
-import React, { useEffect, useMemo, useState } from 'react';
-import DipIcon from '@/components/DipIcon';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Dropdown, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -13,14 +10,13 @@ import {
   PieChartOutlined,
   TableOutlined,
 } from '@ant-design/icons';
-import { DipChatItemContentProgressType } from '@/components/DipChat/interface';
 import DipEcharts from '@/components/DipEcharts';
+import ADTable from '@/components/ADTable';
+import ChartPreviewModal from '@/components/DipChat/components/ChartPreviewModal';
+import { buildChartToolEchartsOptions } from '@/components/DipChat/utils';
 import _ from 'lodash';
 import intl from 'react-intl-universal';
-import SkillBar from '@/components/DipChat/components/SkillBar';
-import ADTable from '@/components/ADTable';
-import { buildChartToolEchartsOptions } from '@/components/DipChat/utils';
-import ChartPreviewModal from '@/components/DipChat/components/ChartPreviewModal';
+import styles from './index.module.less';
 
 type ChartViewMode = 'chart' | 'table';
 
@@ -130,14 +126,7 @@ const optimizeCircularChartOptions = (options: any, chartType?: string, inModal:
     ...seriesItem,
     data: getOptimizedPieSeriesData(seriesItem?.data),
     center: ['50%', '54%'],
-    radius:
-      chartType === 'Circle'
-        ? inModal
-          ? ['42%', '68%']
-          : ['38%', '62%']
-        : inModal
-          ? '68%'
-          : '62%',
+    radius: chartType === 'Circle' ? (inModal ? ['42%', '68%'] : ['38%', '62%']) : inModal ? '68%' : '62%',
     avoidLabelOverlap: true,
     minAngle: 3,
     itemStyle: {
@@ -168,32 +157,34 @@ const optimizeCircularChartOptions = (options: any, chartType?: string, inModal:
   return nextOptions;
 };
 
-type ChartToolPanelProps = {
-  progressItem: DipChatItemContentProgressType;
-  chatItemIndex: number;
-  progressIndex: number;
-  readOnly: boolean;
+type SwitchableChartPanelProps = {
+  chartResult?: {
+    echartsOptions?: any;
+    tableColumns?: any[];
+    tableData?: any[];
+    rawChartResult?: {
+      chart_config?: Record<string, any>;
+      data?: any[];
+      title?: string;
+    };
+  };
+  previewTitle?: string;
+  showChartTitle?: boolean;
+  transformTableColumns?: (columns: any[]) => any[];
 };
 
-const ChartToolPanel = ({ progressItem, chatItemIndex, progressIndex, readOnly }: ChartToolPanelProps) => {
-  const {
-    dipChatStore: { streamGenerating, chatList, activeProgressIndex },
-    openSideBar,
-    setDipChatStore,
-  } = useDipChatStore();
-  const view = () => {
-    openSideBar(chatItemIndex);
-    setDipChatStore({
-      activeProgressIndex: progressIndex,
-    });
-  };
-  const loading = streamGenerating && chatItemIndex === chatList.length - 1;
+const SwitchableChartPanel = ({
+  chartResult,
+  previewTitle,
+  showChartTitle = false,
+  transformTableColumns,
+}: SwitchableChartPanelProps) => {
   const [viewMode, setViewMode] = useState<ChartViewMode>('chart');
   const [previewOpen, setPreviewOpen] = useState(false);
-  const rawChartResult = progressItem.chartResult?.rawChartResult;
+  const rawChartResult = chartResult?.rawChartResult;
   const rawChartType = _.get(rawChartResult, ['chart_config', 'chart_type'], '') as SwitchableChartType | '';
   const [selectedChartType, setSelectedChartType] = useState<SwitchableChartType>('Column');
-  const echartsOptions = progressItem.chartResult?.echartsOptions || {};
+  const echartsOptions = useMemo(() => chartResult?.echartsOptions || {}, [chartResult?.echartsOptions]);
 
   useEffect(() => {
     setViewMode('chart');
@@ -202,7 +193,7 @@ const ChartToolPanel = ({ progressItem, chatItemIndex, progressIndex, readOnly }
       return;
     }
     setSelectedChartType('Column');
-  }, [progressIndex, rawChartType]);
+  }, [rawChartType, previewTitle]);
 
   const canSwitchChartType = useMemo(
     () => Boolean(rawChartResult?.chart_config) && SWITCHABLE_SOURCE_CHART_TYPES.has(rawChartType),
@@ -219,136 +210,123 @@ const ChartToolPanel = ({ progressItem, chatItemIndex, progressIndex, readOnly }
     []
   );
 
-  const getChartOptionsByType = (chartType?: string, inModal: boolean = false) => {
-    if (!_.isEmpty(rawChartResult) && rawChartResult?.chart_config) {
-      const nextOptions = _.cloneDeep(buildChartToolEchartsOptions(rawChartResult, chartType));
-      const outputDataZoom = getOutputDataZoom(rawChartResult, chartType);
+  const getChartOptionsByType = useCallback(
+    (chartType?: string, inModal: boolean = false) => {
+      if (!_.isEmpty(rawChartResult) && rawChartResult?.chart_config) {
+        const nextOptions = _.cloneDeep(buildChartToolEchartsOptions(rawChartResult, chartType));
+        const outputDataZoom = getOutputDataZoom(rawChartResult, chartType);
 
-      if (outputDataZoom) {
-        nextOptions.dataZoom = outputDataZoom;
-      } else {
-        delete nextOptions.dataZoom;
+        if (outputDataZoom) {
+          nextOptions.dataZoom = outputDataZoom;
+        } else {
+          delete nextOptions.dataZoom;
+        }
+
+        return optimizeCircularChartOptions(nextOptions, chartType, inModal);
       }
-
-      return optimizeCircularChartOptions(nextOptions, chartType, inModal);
-    }
-    return echartsOptions;
-  };
+      return echartsOptions;
+    },
+    [echartsOptions, rawChartResult]
+  );
 
   const chartOptions = useMemo(
     () => getChartOptionsByType(canSwitchChartType ? selectedChartType : rawChartType),
-    [canSwitchChartType, rawChartResult, rawChartType, selectedChartType, echartsOptions]
+    [canSwitchChartType, getChartOptionsByType, rawChartType, selectedChartType]
   );
 
-  const renderToolbar = () => {
-    return (
-      <div className={styles.outputToolbar}>
-        <Tooltip title={intl.get('dipChat.switchToTable')}>
-          <Button
-            size="small"
-            type={viewMode === 'table' ? 'primary' : 'default'}
-            icon={<TableOutlined />}
-            onClick={() => {
-              setViewMode('table');
-            }}
-          />
-        </Tooltip>
-        {canSwitchChartType ? (
-          <Dropdown
-            menu={{
-              items: chartMenuItems,
-              selectable: true,
-              selectedKeys: [selectedChartType],
-              onClick: ({ key }) => {
-                setSelectedChartType(key as SwitchableChartType);
-                setViewMode('chart');
-              },
-            }}
-            placement="bottomRight"
-          >
-            <span>
-              <Tooltip title={intl.get('dipChat.switchChartType')}>
-                <Button
-                  size="small"
-                  type={viewMode === 'chart' ? 'primary' : 'default'}
-                  icon={getChartTypeIcon(selectedChartType)}
-                >
-                  <DownOutlined />
-                </Button>
-              </Tooltip>
-            </span>
-          </Dropdown>
-        ) : (
-          <Tooltip title={intl.get('dipChat.switchToChart')}>
-            <Button
-              size="small"
-              type={viewMode === 'chart' ? 'primary' : 'default'}
-              icon={getChartTypeIcon(rawChartType)}
-              onClick={() => {
-                setViewMode('chart');
-              }}
-            />
-          </Tooltip>
-        )}
-        {!_.isEmpty(chartOptions) && (
-          <Tooltip title={intl.get('dipChat.openChartPreview')}>
-            <Button
-              size="small"
-              icon={<ExpandOutlined />}
-              onClick={() => {
-                setPreviewOpen(true);
-              }}
-            />
-          </Tooltip>
-        )}
-      </div>
-    );
-  };
-
-  const renderContent = () => {
-    return (
-      <div className={styles.outputPanel}>
-        <div className={styles.chartToolbar}>{renderToolbar()}</div>
-        <div className={styles.chartBody}>
-          {viewMode === 'chart' ? (
-            <DipEcharts className={styles.outputChart} style={{ height: '100%' }} options={chartOptions} notMerge />
-          ) : (
-            <div className={styles.tablePanel}>
-              <ADTable
-                autoScrollY
-                size="small"
-                showHeader={false}
-                columns={progressItem.chartResult?.tableColumns}
-                dataSource={progressItem.chartResult?.tableData}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
+  if (_.isEmpty(chartOptions)) {
+    return null;
+  }
 
   return (
-    <div className={styles.container}>
-      <SkillBar
-        className="dip-mb-8"
-        icon={<DipIcon className="dip-font-16" type="icon-dip-color-echarts" />}
-        title={progressItem.title}
-        status={progressItem.status}
-        readOnly={readOnly}
-        loading={loading}
-        consumeTime={progressItem.consumeTime}
-        onView={view}
-        active={progressIndex === activeProgressIndex}
-      />
-      {!_.isEmpty(echartsOptions) && (
-        <div className="dip-mb-8">
-          <div className={styles.charts}>{renderContent()}</div>
+    <>
+      <div className={styles.charts}>
+        <div className={styles.outputPanel}>
+          {showChartTitle && previewTitle ? (
+            <div className={styles.chartTitle} title={previewTitle}>
+              {previewTitle}
+            </div>
+          ) : null}
+          <div className={styles.chartToolbar}>
+            <div className={styles.outputToolbar}>
+              <Tooltip title={intl.get('dipChat.switchToTable')}>
+                <Button
+                  size="small"
+                  type={viewMode === 'table' ? 'primary' : 'default'}
+                  icon={<TableOutlined />}
+                  onClick={() => {
+                    setViewMode('table');
+                  }}
+                />
+              </Tooltip>
+              {canSwitchChartType ? (
+                <Dropdown
+                  menu={{
+                    items: chartMenuItems,
+                    selectable: true,
+                    selectedKeys: [selectedChartType],
+                    onClick: ({ key }) => {
+                      setSelectedChartType(key as SwitchableChartType);
+                      setViewMode('chart');
+                    },
+                  }}
+                  placement="bottomRight"
+                >
+                  <span>
+                    <Tooltip title={intl.get('dipChat.switchChartType')}>
+                      <Button
+                        size="small"
+                        type={viewMode === 'chart' ? 'primary' : 'default'}
+                        icon={getChartTypeIcon(selectedChartType)}
+                      >
+                        <DownOutlined />
+                      </Button>
+                    </Tooltip>
+                  </span>
+                </Dropdown>
+              ) : (
+                <Tooltip title={intl.get('dipChat.switchToChart')}>
+                  <Button
+                    size="small"
+                    type={viewMode === 'chart' ? 'primary' : 'default'}
+                    icon={getChartTypeIcon(rawChartType)}
+                    onClick={() => {
+                      setViewMode('chart');
+                    }}
+                  />
+                </Tooltip>
+              )}
+              <Tooltip title={intl.get('dipChat.openChartPreview')}>
+                <Button
+                  size="small"
+                  icon={<ExpandOutlined />}
+                  onClick={() => {
+                    setPreviewOpen(true);
+                  }}
+                />
+              </Tooltip>
+            </div>
+          </div>
+          <div className={showChartTitle && previewTitle ? styles.chartBodyWithTitle : styles.chartBody}>
+            {viewMode === 'chart' ? (
+              <DipEcharts className={styles.outputChart} style={{ height: '100%' }} options={chartOptions} notMerge />
+            ) : (
+              <div className={styles.tablePanel}>
+                <ADTable
+                  autoScrollY
+                  size="small"
+                  showHeader={false}
+                  columns={chartResult?.tableColumns}
+                  dataSource={chartResult?.tableData}
+                />
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
       <ChartPreviewModal
         open={previewOpen}
-        title={progressItem.title}
+        title={previewTitle}
         onCancel={() => {
           setPreviewOpen(false);
         }}
@@ -357,23 +335,12 @@ const ChartToolPanel = ({ progressItem, chatItemIndex, progressIndex, readOnly }
         initialViewMode={viewMode}
         initialSelectedChartType={selectedChartType}
         getChartOptionsByType={getChartOptionsByType}
-        tableColumns={progressItem.chartResult?.tableColumns}
-        tableData={progressItem.chartResult?.tableData}
-        transformTableColumns={columns =>
-          columns.map((column, index) => {
-            if (index === 1) {
-              return {
-                ...column,
-                width: 500,
-              };
-            }
-
-            return column;
-          })
-        }
+        tableColumns={chartResult?.tableColumns}
+        tableData={chartResult?.tableData}
+        transformTableColumns={transformTableColumns}
       />
-    </div>
+    </>
   );
 };
 
-export default ChartToolPanel;
+export default SwitchableChartPanel;

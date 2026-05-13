@@ -62,6 +62,19 @@
     "selectConversationToPreview": "选择要预览的会话",
     "historyConversations": "历史会话",
     "save": "保存",
-    "rename": "重命名"
+    "rename": "重命名",
+    "switchToTable": "切换为表格",
+    "switchToChart": "切换为图表",
+    "switchChartType": "切换图表类型",
+    "openChartPreview": "查看大图",
+    "finalAnswerChart": "最终结果图表",
+    "tableView": "表格",
+    "chartTypeColumn": "柱状图",
+    "chartTypeLine": "折线图",
+    "chartTypePie": "饼图",
+    "chartTypeDonut": "环形图",
+    "chartTypeOthers": "其他",
+    "runningProcess": "运行过程分析",
+    "consumeTime": "耗时："
   }
-} 
+}

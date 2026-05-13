@@ -62,6 +62,19 @@
     "selectConversationToPreview": "選擇要預覽的會話",
     "historyConversations": "歷史會話",
     "save": "保存",
-    "rename": "重命名"
+    "rename": "重命名",
+    "switchToTable": "切換為表格",
+    "switchToChart": "切換為圖表",
+    "switchChartType": "切換圖表類型",
+    "openChartPreview": "查看大圖",
+    "finalAnswerChart": "最終結果圖表",
+    "tableView": "表格",
+    "chartTypeColumn": "柱狀圖",
+    "chartTypeLine": "折線圖",
+    "chartTypePie": "餅圖",
+    "chartTypeDonut": "環形圖",
+    "chartTypeOthers": "其他",
+    "runningProcess": "運行過程分析",
+    "consumeTime": "耗時："
   }
-} 
+}

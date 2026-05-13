@@ -46,6 +46,31 @@ export type IFieldItem = {
     raw_field_name_zh: string
 }
 
+export interface ISearchAgentInfo {
+    adp_agent_key: string
+    adp_business_domain_id: string
+}
+
+export interface IGetSearchAgentInfoResult {
+    res: ISearchAgentInfo
+}
+
+export interface IGetPublishedAgentListParams {
+    ids?: string[]
+    size: number
+    is_to_square: number
+    business_domain_id: string
+}
+
+export interface IPublishedAgentEntry {
+    id: string
+    version: string
+}
+
+export interface IGetPublishedAgentListResult {
+    entries: IPublishedAgentEntry[]
+}
+
 /**
  * @description 认知搜索-结果项
  * @param id	string	数据目录ID

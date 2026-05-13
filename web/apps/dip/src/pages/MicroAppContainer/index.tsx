@@ -1,7 +1,7 @@
 import { Spin } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 import intl from 'react-intl-universal'
-import { useLocation, useParams } from 'react-router-dom'
+import { useLocation, useParams, useNavigate } from 'react-router-dom'
 import { getApplicationsBasicInfo } from '@/apis'
 import Empty from '@/components/Empty'
 import { getFullPath } from '@/utils/config'
@@ -23,6 +23,7 @@ const resolveAppKeyFromPathname = (pathname: string): string => {
 
 const MicroAppContainer = () => {
   const { appKey } = useParams<{ appKey: string }>()
+  const navigate = useNavigate()
   const { pathname } = useLocation()
   const appKeyParam = useMemo(() => {
     const keyFromParams = (appKey ?? '').trim()
@@ -108,7 +109,7 @@ const MicroAppContainer = () => {
         </div>
       )
     }
-    return <MicroAppComponent appBasicInfo={currentMicroApp} homeRoute={getFullPath(homeRoute)} />
+    return <MicroAppComponent appBasicInfo={currentMicroApp} homeRoute={getFullPath(homeRoute)} customProps={{ navigate }} />
   }
 
   return (
