@@ -1,4 +1,5 @@
 import { Modal } from "antd";
+
 export const hasTargetOperator = (arr: any) => {
   const targetIds = [
     "@intelliinfo/transfer",
@@ -6,6 +7,7 @@ export const hasTargetOperator = (arr: any) => {
     "@anyshare/file/edit",
     "@internal/database/write",
     "@opensearch/bulk-upsert",
+    "@dataset/write-docs",
   ]; // 数据输出类型
 
   // 递归检查单个项目及其嵌套结构

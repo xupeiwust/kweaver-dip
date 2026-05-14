@@ -160,9 +160,10 @@ export const Editor = forwardRef<Instance, EditorProps>((props, ref) => {
 
     useEffect(() => {
         setTimeout(() => {
-            scaleable.current?.scrollTo({
+            zoomCenter({
+                scale: false,
                 left: "center",
-                top: scaleable.current.container!.offsetHeight - 200,
+                top: "content-start",
             });
         }, 33);
     }, []);
@@ -860,7 +861,7 @@ export const Editor = forwardRef<Instance, EditorProps>((props, ref) => {
                     {useMemo(() => {
                         const [triggerStep, ...executorSteps] = value;
                         return (
-                            <div ref={wrapper}>
+                            <div ref={wrapper} className={styles.wrapper}>
                                 <Steps
                                     type={editorType}
                                     steps={executorSteps}
@@ -1157,7 +1158,7 @@ export const Editor = forwardRef<Instance, EditorProps>((props, ref) => {
                                 left: "center",
                                 top:
                                     scaleable.current.container!.offsetHeight -
-                                    200,
+                                    40,
                             });
                         }, 33);
                     }}
@@ -1171,7 +1172,7 @@ export const Editor = forwardRef<Instance, EditorProps>((props, ref) => {
                         scaleable.current?.scrollTo({
                             left: "center",
                             top:
-                                scaleable.current.container!.offsetHeight - 200,
+                                scaleable.current.container!.offsetHeight - 40,
                         })
                     }
                 />

@@ -93,7 +93,9 @@ export const Steps: FC<{
                 {tail && (
                     <>
                         <div
-                            className={clsx(styles.stepDivider, styles.grow)}
+                            className={clsx(styles.stepDivider, {
+                                [styles.grow]: depth > 0,
+                            })}
                         />
                         {tail}
                     </>
@@ -101,6 +103,7 @@ export const Steps: FC<{
                 {depth > 0 && (
                     <div className={clsx(styles.stepDivider, styles.grow)} />
                 )}
+                {depth === 0 && <div className={styles.bottomSpacer} />}
             </div>
         </StepsContext.Provider>
     );

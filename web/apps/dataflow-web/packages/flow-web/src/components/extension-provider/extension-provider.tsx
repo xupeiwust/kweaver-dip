@@ -12,6 +12,7 @@ import Operator from "../../extensions/operator";
 import DataStudio from "../../extensions/datastudio";
 import JSONExtension from "../../extensions/json";
 import OpenSearchExtension from "../../extensions/internal/opensearch-extension";
+import DatasetWriteExtension from "../../extensions/internal/dataset-write-extension";
 import ContentExtension from "../../extensions/content";
 import {
   Executor,
@@ -46,6 +47,7 @@ const Extensions = [AnyShare, Internal, Cron, JSONExtension, ContentExtension, V
 const DataStudioExtensions = [
   DataStudio,
   OpenSearchExtension,
+  DatasetWriteExtension,
   SqlWriteExtension,
   Internal,
   JSONExtension,
