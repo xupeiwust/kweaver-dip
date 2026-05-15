@@ -8,6 +8,7 @@ import {
   renderIdentityMarkdown,
   renderSoulMarkdown,
   renderToolsMarkdown,
+  resolveIdentityTemplatePath,
   resolveSoulTemplatePath,
   resolveToolsTemplatePath
 } from "./digital-human-template";
@@ -16,13 +17,14 @@ describe("buildTemplate", () => {
   it("builds a template from a create request", () => {
     expect(
       buildTemplate({
+        id: "agent-1",
         name: "A",
         creature: "B",
         soul: "C",
         bkn: [{ name: "n", id: "u" }]
       })
     ).toEqual({
-      identity: { name: "A", creature: "B", icon_id: undefined },
+      identity: { id: "agent-1", name: "A", creature: "B", icon_id: undefined },
       soul: "C",
       bkn: [{ name: "n", id: "u" }]
     });
@@ -71,9 +73,9 @@ describe("parseIdentityMarkdown", () => {
   it("parses name and creature lines", () => {
     expect(
       parseIdentityMarkdown(
-        "# IDENTITY.md\n\n- Name: Alice\n- Creature: Dev\n"
+        "# IDENTITY.md\n\n- ID: agent-1\n- Name: Alice\n- Creature: Dev\n"
       )
-    ).toEqual({ name: "Alice", creature: "Dev" });
+    ).toEqual({ id: "agent-1", name: "Alice", creature: "Dev" });
   });
 
   it("parses icon_id from IDENTITY.md", () => {
@@ -121,18 +123,20 @@ describe("mergeFilesToTemplate", () => {
 describe("renderIdentityMarkdown / renderSoulMarkdown", () => {
   it("renders identity with optional creature", () => {
     const md = renderIdentityMarkdown({
-      identity: { name: "X", creature: "Y" },
+      identity: { id: "agent-1", name: "X", creature: "Y" },
       soul: ""
     });
+    expect(md).toContain("- ID: agent-1");
     expect(md).toContain("- Name: X");
     expect(md).toContain("- Creature: Y");
   });
 
   it("renders identity with icon_id", () => {
     const md = renderIdentityMarkdown({
-      identity: { name: "X", icon_id: "ico-1", creature: "Y" },
+      identity: { id: "agent-1", name: "X", icon_id: "ico-1", creature: "Y" },
       soul: ""
     });
+    expect(md).toContain("- ID: agent-1");
     expect(md).toContain("- Name: X");
     expect(md).toContain("- Icon ID: ico-1");
     expect(md).toContain("- Creature: Y");
@@ -144,12 +148,12 @@ describe("renderIdentityMarkdown / renderSoulMarkdown", () => {
       soul: "body",
       bkn: [{ name: "a", id: "b" }]
     });
-    expect(md).toContain("# 👤 角色定义");
+    expect(md).toContain("# 角色定义");
     expect(md).toContain("> body");
     expect(md).toContain("严禁去列举业务知识网络");
     expect(md).toContain("严禁执行 `kweaver bkn list` 命令");
     expect(md).toContain("使用 kweaver-core 技能时，一定要通过 MCP 服务获取 token 和可访问的业务知识网络范围");
-    expect(md).toContain("### 使用约束");
+    expect(md).toContain("## 使用约束");
     expect(md).toContain("不允许查询其他业务知识网络");
     expect(md).not.toContain("## 业务知识网络");
     expect(md).not.toContain("以下为当前允许使用的业务知识网络：");
@@ -231,8 +235,12 @@ describe("renderIdentityMarkdown / renderSoulMarkdown", () => {
     expect(back.bkn).toBeUndefined();
   });
 
-  it("resolveSoulTemplatePath points at de_agent_soul.pug", () => {
-    expect(resolveSoulTemplatePath()).toMatch(/de_agent_soul\.pug$/);
+  it("resolveIdentityTemplatePath points at IDENTITY.md.pug", () => {
+    expect(resolveIdentityTemplatePath()).toMatch(/IDENTITY\.md\.pug$/);
+  });
+
+  it("resolveSoulTemplatePath points at SOUL.md.pug", () => {
+    expect(resolveSoulTemplatePath()).toMatch(/SOUL\.md\.pug$/);
   });
 
   it("renders tools markdown from TOOLS template", () => {

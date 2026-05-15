@@ -270,7 +270,10 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
     bearerToken?: string
   ): Promise<CreateDigitalHumanResult> {
     const id = request.id?.trim() || randomUUID();
-    const template = buildTemplate(request);
+    const template = buildTemplate({
+      ...request,
+      id
+    });
     const workspace = resolveDefaultWorkspace(id);
 
     await this.openClawAgentsAdapter.createAgent({
@@ -392,7 +395,14 @@ export class DefaultDigitalHumanLogic implements DigitalHumanLogic {
     }
 
     const current = mergeFilesToTemplate(identityContent, soulContent);
-    const merged = mergeTemplatePatch(current, patch);
+    const next = mergeTemplatePatch(current, patch);
+    const merged = {
+      ...next,
+      identity: {
+        ...next.identity,
+        id
+      }
+    };
     const currentAppId =
       patch.app_id !== undefined ? await this.readPersistedAppId(id) : undefined;
     const generatedKweaverToken = await this.createKweaverTokenIfNeeded(

@@ -1,84 +1,91 @@
-# TOOLS.md
-
-## 调用 `kweaver-core`
-
-### 获取 KWeaver 连接参数
-
-- 当需要使用 `kweaver-core` 技能时，必须先通过 `dip-studio` MCP Server 获取 KWeaver 服务地址和当前数字员工的 KWeaver Token。
-- 使用 `mcporter` 调用 `dip-studio` MCP Server：
-  * `mcporter call dip-studio.get_kweaver_base_url`
-  * `mcporter call dip-studio.get_kweaver_token agentId=<当前数字员工 agentId>`
-- `get_kweaver_base_url` 返回 `kweaver_base_url`，`get_kweaver_token` 返回 `kweaver_token`。每个数字员工都会配置一个 KWeaver Token，你只能使用配置给你自己的 Token。
-- 出于安全考虑，KWeaver Token 没有保存在本地文件中，而是保存在数据库里。不要从本地文件、其他数字员工配置或历史消息中复用 Token。
-- 调用 `kweaver` CLI 时，必须通过显式参数传递连接信息：
-
-  ```bash
-  kweaver --base-url <kweaver_base_url> --token <kweaver_token> ...
-  ```
-
-- 不要依赖 `KWEAVER_TOKEN` 环境变量作为 `kweaver-core` 的鉴权来源。
-
-### 获取可访问的业务知识网络（BKN）
-
-- 由于 KWeaver Token 的权限范围可能大于实际配置给你的业务知识网络范围，所以在查询业务知识网络之前，*一定要*先要获取可访问的业务知识网络范围。
-- 通过 `dip-studio` MCP Server 提供的 `get_bkn_scope` 工具来获取业务知识网络范围，返回结果为逗号隔开的 ID 列表，例如：`d7ukmrpmpvadhg32rjig,d7ukmp9mpvadhg32rjhg`
-- 使用 `mcporter` 来调用 `dip-studio` MCP Server 提供的工具接口，来获取业务知识网络范围。
-
-## 投递通道消息
-
-### 解析消息中的通道信息
-
-- 如果用户消息内容包含 `@{}` 结构，则表示该消息需要投递到指定 Channel。
-- `@{}` 包含以冒号分隔 Key/Value 以及 Key/Value 对，结构为：`@{channel:<channelType>:user:<displayName>:<userId>}`：
-  * channel:<channelType>: 投递通道类型，channelType 可选值为："Feishu"、"WeChat"、"DingTalk" 等。
-  * displayName:<name>: 指定消息接收者的显示名称。
-  * user_id:<userID>: 指定消息接收者在指定通道上的唯一标识符。
-
-### 投递到飞书（Feishu）
-
-按以下流程来将消息投递到飞书：
-
-1. 读取自己的 agentId
-2. 读取 `~/.openclaw/openclaw.json`，`openclaw.json` 中定义了：
-
- - Channel 与 Agent 的绑定关系，如下：
-
-  ```json
-  {
-    "bindings": [
-      {
-        "agentId": "a987374f-afea-4dd1-8ac1-894217306b1b",
-        "match": {
-          "channel": "feishu",
-          "accountId": "cli_a94a1d897cb85cbb"
+-
+  const content = `# TOOLS.md
+  
+  ## 调用工具（Tools）
+  
+  - 调用工具前，明确要执行工具的目的是什么，输出不超过 50 个字的摘要。
+  - 调用工具后，锚住你的工具执行目的，对工具调用结果进行总结，输出不超过 50 个字的摘要。
+  
+  ## 调用 \`kweaver-core\`
+  
+  ### 获取 KWeaver 连接参数
+  
+  - 当需要使用 \`kweaver-core\` 技能时，必须先通过 \`dip-studio\` MCP Server 获取 KWeaver 服务地址和当前数字员工的 KWeaver Token。
+  - 使用 \`mcporter\` 调用 \`dip-studio\` MCP Server：
+    * \`mcporter call dip-studio.get_kweaver_base_url\`
+    * \`mcporter call dip-studio.get_kweaver_token agentId=<当前数字员工 agentId>\`
+  - \`get_kweaver_base_url\` 返回 \`kweaver_base_url\`，\`get_kweaver_token\` 返回 \`kweaver_token\`。每个数字员工都会配置一个 KWeaver Token，你只能使用配置给你自己的 Token。
+  - 出于安全考虑，KWeaver Token 没有保存在本地文件中，而是保存在数据库里。不要从本地文件、其他数字员工配置或历史消息中复用 Token。
+  - 调用 \`kweaver\` CLI 时，必须通过显式参数传递连接信息：
+  
+    \`\`\`bash
+    kweaver --base-url <kweaver_base_url> --token <kweaver_token> ...
+    \`\`\`
+  
+  - 不要依赖 \`KWEAVER_TOKEN\` 环境变量作为 \`kweaver-core\` 的鉴权来源。
+  
+  ### 获取可访问的业务知识网络（BKN）
+  
+  - 由于 KWeaver Token 的权限范围可能大于实际配置给你的业务知识网络范围，所以在查询业务知识网络之前，*一定要*先要获取可访问的业务知识网络范围。
+  - 通过 \`dip-studio\` MCP Server 提供的 \`get_bkn_scope\` 工具来获取业务知识网络范围，返回结果为逗号隔开的 ID 列表，例如：\`d7ukmrpmpvadhg32rjig,d7ukmp9mpvadhg32rjhg\`
+  - 使用 \`mcporter\` 来调用 \`dip-studio\` MCP Server 提供的工具接口，来获取业务知识网络范围。
+  
+  ## 投递通道消息
+  
+  ### 解析消息中的通道信息
+  
+  - 如果用户消息内容包含 \`@{}\` 结构，则表示该消息需要投递到指定 Channel。
+  - \`@{}\` 包含以冒号分隔 Key/Value 以及 Key/Value 对，结构为：\`@{channel:<channelType>:user:<displayName>:<userId>}\`：
+    * channel:<channelType>: 投递通道类型，channelType 可选值为："Feishu"、"WeChat"、"DingTalk" 等。
+    * displayName:<name>: 指定消息接收者的显示名称。
+    * user_id:<userID>: 指定消息接收者在指定通道上的唯一标识符。
+  
+  ### 投递到飞书（Feishu）
+  
+  按以下流程来将消息投递到飞书：
+  
+  1. 读取自己的 agentId
+  2. 读取 \`~/.openclaw/openclaw.json\`，\`openclaw.json\` 中定义了：
+  
+   - Channel 与 Agent 的绑定关系，如下：
+  
+    \`\`\`json
+    {
+      "bindings": [
+        {
+          "agentId": "a987374f-afea-4dd1-8ac1-894217306b1b",
+          "match": {
+            "channel": "feishu",
+            "accountId": "cli_a94a1d897cb85cbb"
+          }
         }
-      }
-    ]
-  }
-  ```
-
- - Channel 的配置，如下：
-
-  ```json
-  {
-    "channels": {
-      "feishu": {
-        "accounts": {
-          "cli_a94a1d897cb85cbb": {
-            "appId": "cli_a4a1d85c997cb8bb",
-            "appSecret": "evikoQMVX9DksYSC4Zwmb0Z5bEw2BynV"
+      ]
+    }
+    \`\`\`
+  
+   - Channel 的配置，如下：
+  
+    \`\`\`json
+    {
+      "channels": {
+        "feishu": {
+          "accounts": {
+            "cli_a94a1d897cb85cbb": {
+              "appId": "cli_a4a1d85c997cb8bb",
+              "appSecret": "evikoQMVX9DksYSC4Zwmb0Z5bEw2BynV"
+            }
           }
         }
       }
     }
-  }
-  ```
-
-3. 匹配 `bindings.agentId` 与自己的 agentId，命中匹配的 agentId ↔ Channel 关系，从 `match.channel` 和 `match.accountId` 来获取通道类型和 AppId。
-4. 通过 `channels.<channelType>.accounts.<accountId>` 来查找具体的 Channel 配置。
-5. 匹配到 Channel 配置后，`appId` 和 `appSecret` 就是需要设定为飞书技能环境变量的值。
-
-#### 限制
-
-- 如果在 `openclaw.json` 中无法根据自己的 agentId 在 `binding` 关系中匹配到任何 Channel，提示错误。**绝对不要** 使用其他的 `binding` 关系强行投递！
-- 使用飞书技能发送消息时，总是使用 `user_id` 来指定通道消息的接收者
+    \`\`\`
+  
+  3. 匹配 \`bindings.agentId\` 与自己的 agentId，命中匹配的 agentId ↔ Channel 关系，从 \`match.channel\` 和 \`match.accountId\` 来获取通道类型和 AppId。
+  4. 通过 \`channels.<channelType>.accounts.<accountId>\` 来查找具体的 Channel 配置。
+  5. 匹配到 Channel 配置后，\`appId\` 和 \`appSecret\` 就是需要设定为飞书技能环境变量的值。
+  
+  #### 限制
+  
+  - 如果在 \`openclaw.json\` 中无法根据自己的 agentId 在 \`binding\` 关系中匹配到任何 Channel，提示错误。**绝对不要** 使用其他的 \`binding\` 关系强行投递！
+  - 使用飞书技能发送消息时，总是使用 \`user_id\` 来指定通道消息的接收者`;
+!= content

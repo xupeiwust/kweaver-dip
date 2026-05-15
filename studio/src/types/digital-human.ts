@@ -141,6 +141,11 @@ export interface DigitalHumanTemplate {
    */
   identity: {
     /**
+     * Stable digital human identifier (maps to IDENTITY.md `ID`).
+     */
+    id?: string;
+
+    /**
      * Display name (maps to IDENTITY.md `Name`).
      */
     name: string;

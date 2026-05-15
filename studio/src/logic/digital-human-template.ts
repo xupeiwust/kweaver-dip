@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { renderFile } from "pug";
 
 import type {
   BknEntry,
@@ -8,14 +8,11 @@ import type {
   UpdateDigitalHumanRequest
 } from "../types/digital-human";
 
-/** Markdown body with `{{de_setting}}` / `{{bkn_content}}` slots (file kept as `.pug` path in repo). */
-const SOUL_TEMPLATE_FILE = "de_agent_soul.pug";
-/** Markdown body used for TOOLS.md (file kept as `.pug` path in repo). */
+const IDENTITY_TEMPLATE_FILE = "IDENTITY.md.pug";
+const SOUL_TEMPLATE_FILE = "SOUL.md.pug";
 const TOOLS_TEMPLATE_FILE = "TOOLS.md.pug";
 
-const SLOT_DE_SETTING = "{{de_setting}}";
-
-/** Marker for SOUL.md generated from `templates/de_agent_soul.pug`. */
+/** Marker for SOUL.md generated from `templates/SOUL.md.pug`. */
 const DE_AGENT_PERSONA_MARKER = "# 👤 角色定义";
 /** Line prefix before conduct rules (user soul is in blockquotes above this). */
 const DE_AGENT_CONDUCT_LINE_PREFIX = "> **行为准则**";
@@ -35,6 +32,7 @@ export function buildTemplate(
 ): DigitalHumanTemplate {
   return {
     identity: {
+      id: request.id,
       name: request.name,
       creature: request.creature,
       icon_id: request.icon_id
@@ -61,6 +59,7 @@ export function mergeTemplatePatch(
 
   return {
     identity: {
+      id: current.identity.id,
       name: has("name") ? (patch.name as string) : current.identity.name,
       creature: has("creature") ? patch.creature : current.identity.creature,
       icon_id: has("icon_id") ? patch.icon_id : current.identity.icon_id
@@ -71,7 +70,16 @@ export function mergeTemplatePatch(
 }
 
 /**
- * Resolves the absolute path to `templates/de_agent_soul.pug` (used for SOUL.md).
+ * Resolves the absolute path to `templates/IDENTITY.md.pug` (used for IDENTITY.md).
+ * Uses `process.cwd()` so the server must be started with cwd set to the `studio`
+ * package root (same as `npm start` / `npm test` from that directory).
+ */
+export function resolveIdentityTemplatePath(): string {
+  return join(process.cwd(), "templates", IDENTITY_TEMPLATE_FILE);
+}
+
+/**
+ * Resolves the absolute path to `templates/SOUL.md.pug` (used for SOUL.md).
  * Uses `process.cwd()` so the server must be started with cwd set to the `studio`
  * package root (same as `npm start` / `npm test` from that directory).
  */
@@ -89,10 +97,7 @@ export function resolveToolsTemplatePath(): string {
 }
 
 /**
- * Renders the IDENTITY.md content from a template.
- *
- * Follows the OpenClaw `- Key: Value` convention so that the built-in
- * identity parser in OpenClaw can parse it back.
+ * Renders IDENTITY.md from `templates/IDENTITY.md.pug` via the Pug renderer.
  *
  * @param template The digital human template.
  * @returns The IDENTITY.md markdown string.
@@ -100,54 +105,35 @@ export function resolveToolsTemplatePath(): string {
 export function renderIdentityMarkdown(
   template: DigitalHumanTemplate
 ): string {
-  const { identity } = template;
-  const lines: string[] = ["# IDENTITY.md", ""];
-
-  lines.push(`- Name: ${identity.name}`);
-
-  if (identity.icon_id) {
-    lines.push(`- Icon ID: ${identity.icon_id}`);
-  }
-
-  if (identity.creature) {
-    lines.push(`- Creature: ${identity.creature}`);
-  }
-
-  lines.push("");
-  return lines.join("\n");
+  return renderFile(resolveIdentityTemplatePath(), {
+    agent_id: template.identity.id ?? "",
+    agent_name: template.identity.name,
+    icon_id: template.identity.icon_id ?? "",
+    creature: template.identity.creature ?? ""
+  });
 }
 
 /**
- * Renders SOUL.md from `templates/de_agent_soul.pug`.
- *
- * The file is Markdown with template slots filled at render time:
- * - `{{de_setting}}` — 角色设定（来自 `template.soul`，渲染为 `> …` 引用块）
- * - `{{bkn_content}}` — 保持为空；业务知识网络范围写入 RDS，不写入 SOUL.md
- *
- * (The real file is not compiled as Pug because the body is Markdown with `#` headings;
- * slot substitution avoids Pug treating `#` as an ID.)
+ * Renders SOUL.md from `templates/SOUL.md.pug` via the Pug renderer.
  *
  * @param template The digital human template.
  * @returns The full SOUL.md markdown string (persona + BKN + pointers to archive/schedule skills).
  */
 export function renderSoulMarkdown(template: DigitalHumanTemplate): string {
-  const raw = readFileSync(resolveSoulTemplatePath(), "utf8");
-  const de_setting = formatPersonaBlockquote(template.soul ?? "");
-  return raw
-    .replaceAll(SLOT_DE_SETTING, de_setting)
-    .replaceAll("{{bkn_content}}", "");
+  return renderFile(resolveSoulTemplatePath(), {
+    agent_id: template.identity.id ?? "",
+    agent_name: template.identity.name,
+    de_setting: formatPersonaBlockquote(template.soul ?? "")
+  });
 }
 
 /**
- * Renders TOOLS.md from `templates/TOOLS.md.pug`.
- *
- * The current template is static Markdown and intentionally read as text, matching
- * the SOUL.md template rendering style used by this module.
+ * Renders TOOLS.md from `templates/TOOLS.md.pug` via the Pug renderer.
  *
  * @returns The full TOOLS.md markdown string.
  */
 export function renderToolsMarkdown(): string {
-  return readFileSync(resolveToolsTemplatePath(), "utf8");
+  return renderFile(resolveToolsTemplatePath(), {});
 }
 
 /** Prefixes each line with `> ` for the persona block under “角色定义”. */
@@ -210,6 +196,9 @@ export function parseIdentityMarkdown(
     }
 
     switch (label) {
+      case "id":
+        identity.id = value;
+        break;
       case "name":
         identity.name = value;
         break;

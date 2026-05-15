@@ -1089,6 +1089,13 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
       expect.objectContaining({
         agentId: result.id,
         name: "IDENTITY.md",
+        content: expect.stringContaining(`- ID: ${result.id}`) as string
+      })
+    );
+    expect(setAgentFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: result.id,
+        name: "IDENTITY.md",
         content: expect.stringContaining("Bob") as string
       })
     );
@@ -1644,6 +1651,13 @@ describe("DefaultDigitalHumanLogic lifecycle (filesystem + adapter)", () => {
     await logic.updateDigitalHuman(id, { name: "New", soul: "New soul" });
 
     expect(listAgentFiles).toHaveBeenCalledWith({ agentId: id });
+    expect(setAgentFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: id,
+        name: "IDENTITY.md",
+        content: expect.stringContaining(`- ID: ${id}`) as string
+      })
+    );
     expect(setAgentFile).toHaveBeenCalledWith(
       expect.objectContaining({
         agentId: id,
