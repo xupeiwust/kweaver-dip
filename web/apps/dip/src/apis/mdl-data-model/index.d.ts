@@ -171,6 +171,88 @@ export type GetMetricInfoByIdsPesponseType = Array<{
   [key: string]: any
 }>
 
+export type GetDataDictListParamsType = {
+  sort?: 'update_time'
+  direction: 'desc' | 'asc'
+  limit: number
+  offset: number
+  type?: string
+  tag?: string
+  name_pattern?: string
+}
+
+export interface DataDictDimensionFieldType {
+  id: string
+  name: string
+}
+
+export interface DataDictDimensionType {
+  keys: DataDictDimensionFieldType[]
+  values: DataDictDimensionFieldType[]
+}
+
+export interface DataDictEntryType {
+  id: string
+  name: string
+  tags: string[]
+  type: 'kv_dict' | 'dimension_dict'
+  comment?: string
+  unique_key?: boolean
+  dimension?: DataDictDimensionType
+  update_time?: string
+  [key: string]: unknown
+}
+
+export interface GetDataDictListResponseType {
+  total_count: number
+  entries: DataDictEntryType[]
+}
+
+export type GetDataDictInfoResponseType = DataDictEntryType | DataDictEntryType[]
+
+export interface GetDataDictItemsParamsType {
+  query_field?: string
+  query_pattern?: string
+  limit?: number
+  offset?: number
+}
+
+export interface DataDictItemType {
+  id: string
+  key?: string
+  value?: string
+  comment?: string
+  [key: string]: unknown
+}
+
+export interface GetDataDictItemsResponseType {
+  total_count: number
+  entries: DataDictItemType[]
+}
+
+export type DataDictImportModeType = 'normal' | 'ignore' | 'overwrite'
+
+export interface GetObjectTagsParamsType {
+  sort?: string
+  direction?: 'asc' | 'desc'
+  limit?: number
+  offset?: number
+  module?: string
+  name_pattern?: string
+}
+
+export interface ObjectTagType {
+  tag: string
+  count?: number
+  module?: string
+  [key: string]: unknown
+}
+
+export interface GetObjectTagsResponseType {
+  total_count: number
+  entries: ObjectTagType[]
+}
+
 export interface GetDataDictsParamsType {
   // 根据名称模糊匹配，不能与name同时存在
   name_pattern?: string

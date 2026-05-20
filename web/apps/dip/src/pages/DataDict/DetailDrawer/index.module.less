@@ -1,0 +1,149 @@
+.detail-drawer {
+  :global(.@{ant-prefix}-drawer-body) {
+    padding: 0 24px;
+  }
+
+  :global {
+    .@{ant-prefix}-table-cell {
+      padding: 8px !important;
+    }
+
+    .@{ant-prefix}-table-thead .@{ant-prefix}-table-cell {
+      font-weight: 500 !important;
+    }
+
+    .@{ant-prefix}-input {
+      height: 32px;
+    }
+
+    .@{ant-prefix}-form-item-explain-error {
+      position: absolute;
+      bottom: -16px;
+      line-height: 19px;
+    }
+
+    .@{ant-prefix}-table-cell {
+      height: 62px;
+    }
+  }
+
+  .form-text {
+    height: 34px;
+    display: flex;
+    align-items: center;
+    color: rgba(0, 0, 0, 0.65);
+    white-space: nowrap;
+
+    .ellipsis-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .tag {
+    max-width: 150px;
+    margin-right: 10px;
+    border: 1px solid rgb(217, 217, 217);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: rgba(0, 0, 0, 0.65);
+    font-size: 12px;
+  }
+
+  .dict-wrapper {
+    display: flex;
+    align-items: flex-start;
+    height: fit-content;
+  }
+}
+
+.drawer-title {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.first-level-panel-header {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.dict-item-operator {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+
+  .button-group {
+    width: 600px;
+
+    button {
+      margin-right: 8px;
+    }
+
+    .total-count-text {
+      display: inline-block;
+      width: 100px;
+      height: 32px;
+      line-height: 32px;
+    }
+  }
+
+  .filter {
+    display: flex;
+    justify-content: flex-end;
+    width: 420px;
+
+    .select {
+      margin-right: 8px;
+      text-align: right;
+      width: 220px;
+
+      .text {
+        margin: 0 8px;
+      }
+    }
+
+    .search {
+      width: 180px;
+    }
+  }
+}
+
+.dict-box {
+  :global {
+    .@{ant-prefix}-btn-link {
+      padding: 0 !important;
+      border: none !important;
+    }
+
+    .@{ant-prefix}-form-item {
+      display: inline-block;
+      width: 100%;
+    }
+
+    .@{ant-prefix}-form-item-control {
+      line-height: 32px;
+    }
+
+    .has-error .@{ant-prefix}-form-explain,
+    .has-error .@{ant-prefix}-form-split {
+      position: absolute;
+    }
+  }
+}
+
+.modal-warning {
+  :global {
+    .@{ant-prefix}-modal-confirm-btns {
+      display: none !important;
+    }
+  }
+
+  .custom-btn {
+    margin-top: 40px;
+    float: right;
+
+    .marginRight {
+      margin-right: 8px;
+    }
+  }
+}

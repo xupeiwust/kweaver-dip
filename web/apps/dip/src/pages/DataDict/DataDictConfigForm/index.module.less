@@ -1,0 +1,59 @@
+.container {
+  background-color: #fff;
+  padding: 16px 20px;
+  height: calc(100% - 41px);
+
+  .collapse-card {
+    width: 580px;
+  }
+
+  .button-group {
+    display: flex;
+    justify-content: space-between;
+    margin: 0 0 30px 130px;
+    width: 135px;
+    padding-bottom: 20px;
+  }
+
+  .dimension-form-item-wrapper {
+    width: 350px;
+
+    .dimension-form-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 320px;
+
+      :global(.@{ant-prefix}-form-item) {
+        margin-bottom: 0 !important;
+        width: 290px;
+      }
+
+      .delete-button {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 18px;
+        height: 18px;
+        color: #777;
+
+        :hover {
+          color: #3b71fb;
+          cursor: pointer;
+        }
+      }
+    }
+
+    .input-box {
+      margin-bottom: 8px;
+    }
+
+    .add-button {
+      width: 50px;
+      height: 25px;
+      line-height: 25px;
+      color: #3b71fb;
+      cursor: pointer;
+    }
+  }
+}

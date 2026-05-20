@@ -1,4 +1,5 @@
 import type { ComponentType, LazyExoticComponent } from 'react'
+import React from 'react'
 import type { MenuWorkbenchComponentPageProps } from '@/pages/_shared/menu-workbench/types'
 
 export type BusinessComponentPageProps = MenuWorkbenchComponentPageProps
@@ -9,5 +10,5 @@ export const businessComponentPageRegistry: Record<
   | ComponentType<BusinessComponentPageProps>
   | LazyExoticComponent<ComponentType<BusinessComponentPageProps>>
 > = {
-  // "xx-page": React.lazy(() => import("./xx-page")),
+  'data-dict': React.lazy(() => import('../DataDict')),
 }

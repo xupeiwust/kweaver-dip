@@ -46,6 +46,9 @@ import skills_tw from './skills/zh-TW.json'
 import workPlan_en from './work-plan/en-US.json'
 import workPlan_zh from './work-plan/zh-CN.json'
 import workPlan_tw from './work-plan/zh-TW.json'
+import dataDict_en from './data-dict/en-US.json'
+import dataDict_zh from './data-dict/zh-CN.json'
+import dataDict_tw from './data-dict/zh-TW.json'
 
 const zh_CN = {
   ...error_zh,
@@ -64,6 +67,7 @@ const zh_CN = {
   ...sider_zh,
   ...skills_zh,
   ...workPlan_zh,
+  ...dataDict_zh,
 }
 
 const zh_TW = {
@@ -83,6 +87,7 @@ const zh_TW = {
   ...sider_tw,
   ...skills_tw,
   ...workPlan_tw,
+  ...dataDict_tw,
 }
 
 const en_US = {
@@ -102,6 +107,7 @@ const en_US = {
   ...sider_en,
   ...skills_en,
   ...workPlan_en,
+  ...dataDict_en,
 }
 
 const locales = {
