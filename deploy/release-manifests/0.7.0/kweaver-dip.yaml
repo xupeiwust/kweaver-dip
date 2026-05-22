@@ -58,7 +58,7 @@ releases:
         publicEnabledModules: "store,studio"  # 允许值：store,studio（多个用英文逗号分隔）
   auth-service:
     chart: auth-service
-    version: 0.4.0-main.20260430.2
+    version: 0.7.0-main.20260521.1
   basic-search:
     chart: basic-search
     version: 0.4.0-main.20260331.1
@@ -91,10 +91,10 @@ releases:
     version: 0.4.0-main.20260416.2
   sailor-agent:
     chart: sailor-agent
-    version: 0.4.0-main.20260430.1
+    version: 0.7.0-main.20260521.1
   sailor-service:
     chart: sailor-service
-    version: 0.4.1-main.20260417.1
+    version: 0.7.0-main.20260521.1
   session:
     chart: session
     version: 0.4.0-main.20260403.2
