@@ -8,8 +8,7 @@
     2. 根据 user_id 生成 MD5 ID
 """
 
-import hashlib
-import time
+import secrets
 from abc import ABC, abstractmethod
 
 from langchain_core.chat_history import BaseChatMessageHistory
@@ -52,13 +51,10 @@ class GetSessionId(object):
     @classmethod
     def from_user_id(cls, user_id):
         """
-        根据用户ID生成一个MD5会话ID
+        根据用户ID生成一个会话ID
         :param user_id:
         :return:
         """
-        timestamp = str(int(time.time()))
-        input_str = f"{user_id}-{timestamp}"
-        md5_hash = hashlib.md5(input_str.encode()).hexdigest()
-
-        logger.info(f"md5_hash: {md5_hash}")
-        return md5_hash
+        session_id = secrets.token_hex(32)
+        logger.info(f"session_id: {session_id}")
+        return session_id
